@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Editor & Invitation Maker - Final Build v1.15.0</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        header {
+            background: #ffffff; border-bottom: 1px solid var(--border); padding: 10px 16px;
+            display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;
+        }
+        header h1 { font-size: 1.125rem; color: var(--primary); }
+        header .user-badge { font-size: 0.75rem; background: #e0e7ff; color: var(--primary); padding: 4px 8px; border-radius: 9999px; font-weight: 600; }
+
+        .container { max-width: 960px; width: 100%; margin: 0 auto; padding: 16px; flex: 1; display: flex; flex-direction: column; }
+        .view-section { display: none; flex: 1; flex-direction: column; }
+        .view-section.active { display: flex; }
+
+        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        @media(min-width: 640px) { .dashboard-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .card-menu {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+            text-align: center; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 110px;
+        }
+        .card-menu:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .card-menu .icon { font-size: 1.75rem; }
+        .card-menu .title { font-size: 0.8125rem; font-weight: 600; color: var(--text-main); }
+
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px; }
+        .card h2 { font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+
+        .badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 9999px; font-weight: 600; }
+        .badge.ok { background: #d1fae5; color: #065f46; }
+        .badge.err { background: #fee2e2; color: #991b1b; }
+        .badge.warn { background: #fef3c7; color: #92400e; }
+
+        button {
+            background-color: var(--primary); color: white; border: none; border-radius: 8px; padding: 10px 14px;
+            font-size: 0.875rem; font-weight: 500; cursor: pointer; width: 100%; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button.secondary { background-color: #64748b; }
+        button.danger { background-color: var(--error); }
+
+        .spinner { width: 14px; height: 14px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 0.8s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .list-item { background: #f1f5f9; padding: 10px; border-radius: 8px; font-size: 0.8125rem; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { background: transparent; color: var(--primary); border: 1px solid var(--primary); margin-bottom: 12px; width: auto; padding: 6px 12px; font-size: 0.75rem; }
+        .back-btn:hover { background: #e0e7ff; }
+
+        pre { background: #0f172a; color: #38bdf8; padding: 10px; border-radius: 8px; font-size: 0.7rem; overflow-x: auto; margin-top: 10px; max-height: 120px; }
+
+        .template-grid { display: grid; grid-template-columns: repeat(1, 1fr); gap: 12px; margin-top: 12px; }
+        @media(min-width: 640px) { .template-grid { grid-template-columns: repeat(2, 1fr); } }
+        .template-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: #fafafa; cursor: pointer; transition: all 0.2s; }
+        .template-card:hover { border-color: var(--primary); background: #f0fdf4; }
+
+        .asset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+        @media(min-width: 640px) { .asset-grid { grid-template-columns: repeat(4, 1fr); } }
+        .asset-card { border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: #fff; text-align: center; }
+        .asset-card img { width: 100%; height: 90px; object-fit: cover; border-radius: 6px; background: #e2e8f0; margin-bottom: 6px; }
+
+        /* Editor Styles */
+        .editor-container { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+        @media(min-width: 768px) { .editor-container { flex-direction: row; } }
+        .editor-sidebar { width: 100%; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 12px; max-height: 80vh; overflow-y: auto; }
+        @media(min-width: 768px) { .editor-sidebar { width: 320px; } }
+        .editor-canvas-wrapper { flex: 1; background: #cbd5e1; border-radius: 12px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; min-height: 480px; padding: 20px; }
+        .canvas { width: 320px; height: 568px; background: #ffffff; position: relative; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); overflow-y: auto; overflow-x: hidden; transform-origin: center; }
+        .canvas-object { position: absolute; cursor: move; user-select: none; border: 1px dashed transparent; padding: 4px; }
+        .canvas-object.selected { border-color: var(--primary); }
+        .tool-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .tool-group button { flex: 1; padding: 8px; font-size: 0.75rem; }
+        .input-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+        .input-row label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+        .input-row input, .input-row select, .input-row textarea { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8125rem; }
+
+        .invitation-section { padding: 16px; text-align: center; border-bottom: 1px solid var(--border); }
+        .countdown-box { display: flex; justify-content: center; gap: 8px; margin: 10px 0; }
+        .countdown-item { background: #f1f5f9; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
+        .rsvp-form { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; text-align: left; }
+        .music-widget { position: absolute; bottom: 16px; right: 16px; background: rgba(15, 23, 42, 0.85); color: #fff; padding: 6px 12px; border-radius: 9999px; font-size: 0.75rem; display: flex; align-items: center; gap: 8px; z-index: 50; cursor: pointer; backdrop-filter: blur(4px); }
+
+        #publicViewerOverlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 1000; overflow-y: auto; align-items: center; justify-content: center; padding: 16px;
+        }
+        .public-card { width: 100%; max-width: 480px; background: #ffffff; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; position: relative; }
+
+        .admin-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        @media(min-width: 640px) { .admin-stats-grid { grid-template-columns: repeat(4, 1fr); } }
+        .stat-card { background: #f1f5f9; border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+        .stat-card .number { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+        .stat-card .label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 8px; }
+        .admin-table th, .admin-table td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+        .admin-table th { background: #f8fafc; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <!-- Public Viewer Mode Container -->
+    <div id="publicViewerOverlay">
+        <div class="public-card" id="publicCardContent">
+            <div style="padding: 24px; text-align:center;">Memuat Undangan...</div>
+        </div>
+    </div>
+
+    <header id="mainHeader">
+        <h1>✨ Design Editor (Final)</h1>
+        <div id="userBadge" class="user-badge">Loading...</div>
+    </header>
+
+    <div class="container" id="mainAppContainer">
+
+        <!-- ================= VIEW 1: DASHBOARD ================= -->
+        <div id="view-dashboard" class="view-section active">
+            <div style="margin-bottom: 16px;">
+                <h2 style="font-size: 1.25rem; font-weight: 700;">Dashboard Utama (Production Ready)</h2>
+                <p style="font-size: 0.8125rem; color: var(--text-muted);">Pilih menu untuk mulai mendesain atau mengelola sistem.</p>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card-menu" onclick="switchView('view-templates-catalog'); loadTemplatesCatalog();">
+                    <span class="icon">➕</span>
+                    <span class="title">Buat Desain</span>
+                </div>
+                <div class="card-menu" onclick="switchView('view-projects'); loadUserProjects();">
+                    <span class="icon">📂</span>
+                    <span class="title">Project Saya</span>
+                </div>
+                <div class="card-menu" onclick="switchView('view-templates-catalog'); loadTemplatesCatalog();">
+                    <span class="icon">📑</span>
+                    <span class="title">Template</span>
+                </div>
+                <div class="card-menu" onclick="switchView('view-assets'); loadUserAssets();">
+                    <span class="icon">🖼️</span>
+                    <span class="title">Asset Library</span>
+                </div>
+                <div class="card-menu" onclick="switchView('view-themes')">
+                    <span class="icon">🎨</span>
+                    <span class="title">Theme</span>
+                </div>
+                <div class="card-menu" onclick="switchView('view-drafts'); loadUserProjects();">
+                    <span class="icon">📝</span>
+                    <span class="title">Draft</span>
+                </div>
+                <div class="card-menu" onclick="switchView('view-published')">
+                    <span class="icon">🚀</span>
+                    <span class="title">Published</span>
+                </div>
+                <div class="card-menu" onclick="switchView('view-admin'); loadAdminData();">
+                    <span class="icon">👑</span>
+                    <span class="title">Admin Manager</span>
+                </div>
+                <div class="card-menu" onclick="switchView('view-settings')">
+                    <span class="icon">⚙️</span>
+                    <span class="title">Pengaturan</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>
+                    System Status & Final Database
+                    <span id="systemStatusBadge" class="badge warn">CHECKING...</span>
+                </h2>
+                <button id="initBtn" onclick="runInitialization()" style="margin-bottom: 10px;">
+                    <div class="spinner" id="initSpinner"></div>
+                    <span>Inisialisasi Sistem & Database (v1.15.0 Final)</span>
+                </button>
+                <pre id="logOutput">// Log aktivitas sistem...</pre>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 2: TEMPLATE CATALOG ================= -->
+        <div id="view-templates-catalog" class="view-section">
+            <button class="back-btn" onclick="switchView('view-dashboard')">← Kembali ke Dashboard</button>
+            <div class="card">
+                <h2>Pilih Template & Kategori Event</h2>
+                <div id="templatesCatalogContainer" class="template-grid">Memuat katalog template...</div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 3: CORE EDITOR + EXPORT & SHARE ================= -->
+        <div id="view-editor" class="view-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <button class="back-btn" onclick="switchView('view-dashboard')" style="margin:0;">← Dashboard</button>
+                <div style="display: flex; gap: 6px;">
+                    <button onclick="saveCurrentProject()" style="padding: 6px 10px; font-size: 0.75rem; background: var(--success); width: auto;">Simpan</button>
+                    <button onclick="publishCurrentProject()" style="padding: 6px 10px; font-size: 0.75rem; background: var(--warning); width: auto; color:#000;">🚀 Publish</button>
+                    <button onclick="openExportModal()" style="padding: 6px 10px; font-size: 0.75rem; background: var(--primary); width: auto;">📤 Export & Share</button>
+                </div>
+            </div>
+
+            <div id="exportModalBox" class="card" style="display:none; background:#f8fafc; border:2px dashed var(--primary); margin-bottom:12px;">
+                <h3 style="font-size:0.9rem; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>📤 Export & Share Panel</span>
+                    <button onclick="document.getElementById('exportModalBox').style.display='none'" style="width:auto; padding:2px 6px; font-size:0.7rem; background:var(--error);">Tutup</button>
+                </h3>
+                <div class="input-row"><label>Nama Tamu (Untuk Pesan WhatsApp)</label><input type="text" id="shareGuestName" placeholder="Contoh: Budi & Rekan"></div>
+                <div class="tool-group" style="margin-top: 6px;">
+                    <button class="secondary" onclick="shareWhatsApp()" style="background:#25D366;">💬 Bagikan ke WhatsApp</button>
+                    <button class="secondary" onclick="downloadProjectJson()">💾 Unduh JSON (Backup)</button>
+                </div>
+                <div class="input-row" style="margin-top:8px;"><label>Tautan Publik Undangan</label><input type="text" id="sharePublicUrlInput" readonly placeholder="Klik Publish terlebih dahulu"></div>
+            </div>
+
+            <div class="editor-container">
+                <div class="editor-sidebar">
+                    <h3 style="font-size: 0.875rem; border-bottom: 1px solid var(--border); padding-bottom: 6px;">Editor Engine (v1.15.0)</h3>
+                    
+                    <div class="tool-group">
+                        <button onclick="addObject('text')">+ Teks</button>
+                        <button onclick="addObject('photo')">+ Foto</button>
+                        <button onclick="addObject('shape')">+ Kotak</button>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 8px;">
+                        <h4 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">💍 DATA MEMPELAI & ACARA</h4>
+                        <div class="input-row"><label>Pria</label><input type="text" id="invGroom" oninput="updateInvitationData('groomName', this.value)"></div>
+                        <div class="input-row"><label>Wanita</label><input type="text" id="invBride" oninput="updateInvitationData('brideName', this.value)"></div>
+                        <div class="input-row"><label>Tanggal</label><input type="datetime-local" id="invDate" oninput="updateInvitationData('eventDate', this.value)"></div>
+                        <div class="input-row"><label>Lokasi & Map</label><input type="text" id="invLocation" oninput="updateInvitationData('locationName', this.value)"></div>
+                        <div class="input-row"><label>Info Hadiah</label><input type="text" id="invBank" oninput="updateInvitationData('bankInfo', this.value)"></div>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border); padding-top: 8px;">
+                        <h4 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">🎵 MUSIK LATAR</h4>
+                        <input type="text" id="musicUrlInput" placeholder="https://...mp3" style="padding:6px; font-size:0.8rem; width:100%; border:1px solid var(--border); border-radius:6px;" oninput="updateProjectMusic(this.value)">
+                    </div>
+
+                    <div id="propertyPanel" style="display:none; border-top: 1px solid var(--border); padding-top: 8px;">
+                        <h4 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">PROPERTI OBJEK</h4>
+                        <div class="input-row" id="rowTextContent"><label>Isi Teks</label><input type="text" id="propText" oninput="updateSelectedObjectProp('content', this.value)"></div>
+                        <div class="input-row"><label>Ukuran</label><input type="number" id="propSize" oninput="updateSelectedObjectProp('size', parseInt(this.value))"></div>
+                        <button class="danger" onclick="deleteSelected()" style="margin-top:4px;">Hapus Objek</button>
+                    </div>
+                </div>
+
+                <div class="editor-canvas-wrapper" id="canvasWrapper">
+                    <div class="canvas" id="mainCanvas" onclick="clearSelection(event)">
+                        <div class="music-widget" id="musicWidgetBtn" onclick="userInteractPlayMusic()">
+                            <span id="musicWidgetIcon">🎵</span>
+                            <span id="musicWidgetText">Putar Musik</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 4: PROJECT SAYA ================= -->
+        <div id="view-projects" class="view-section">
+            <button class="back-btn" onclick="switchView('view-dashboard')">← Kembali ke Dashboard</button>
+            <div class="card"><h2>Project Saya</h2><div id="projectListContainer">Memuat...</div></div>
+        </div>
+
+        <!-- ================= VIEW 5: ASSET LIBRARY ================= -->
+        <div id="view-assets" class="view-section">
+            <button class="back-btn" onclick="switchView('view-dashboard')">← Kembali ke Dashboard</button>
+            <div class="card"><h2>Asset Library</h2><div id="assetListContainer" class="asset-grid">Memuat...</div></div>
+        </div>
+
+        <!-- ================= VIEW 6: THEME MANAGER ================= -->
+        <div id="view-themes" class="view-section">
+            <button class="back-btn" onclick="switchView('view-dashboard')">← Kembali ke Dashboard</button>
+            <div class="card"><h2>Theme Manager</h2><div id="globalThemeList" style="margin-top: 10px;"></div></div>
+        </div>
+
+        <!-- ================= VIEW 7: DRAFT ================= -->
+        <div id="view-drafts" class="view-section">
+            <button class="back-btn" onclick="switchView('view-dashboard')">← Kembali ke Dashboard</button>
+            <div class="card"><h2>Draft Projects</h2><div id="draftListContainer">Memuat draft...</div></div>
+        </div>
+
+        <!-- ================= VIEW 8: PUBLISHED ================= -->
+        <div id="view-published" class="view-section">
+            <button class="back-btn" onclick="switchView('view-dashboard')">← Kembali ke Dashboard</button>
+            <div class="card"><h2>Published Invitations</h2></div>
+        </div>
+
+        <!-- ================= VIEW 9: ADMIN MANAGER ================= -->
+        <div id="view-admin" class="view-section">
+            <button class="back-btn" onclick="switchView('view-dashboard')">← Kembali ke Dashboard</button>
+            <div class="card">
+                <h2>👑 Admin Manager & System Stats</h2>
+                <button onclick="loadAdminData()" style="margin-bottom: 12px; width:auto; padding:6px 12px; font-size:0.75rem;">Muat Ulang Data</button>
+                <div class="admin-stats-grid">
+                    <div class="stat-card"><div class="number" id="statUsers">0</div><div class="label">Total Pengguna</div></div>
+                    <div class="stat-card"><div class="number" id="statProjects">0</div><div class="label">Total Proyek</div></div>
+                    <div class="stat-card"><div class="number" id="statRSVP">0</div><div class="label">Total RSVP</div></div>
+                    <div class="stat-card"><div class="number" id="statPublished">0</div><div class="label">Terpublikasi</div></div>
+                </div>
+                <h3 style="font-size: 0.875rem; margin-top: 16px; margin-bottom: 6px;">📥 Rekapitulasi RSVP Tamu Terbaru</h3>
+                <div style="overflow-x: auto;">
+                    <table class="admin-table">
+                        <thead><tr><th>Waktu</th><th>Proyek ID</th><th>Nama Tamu</th><th>Kehadiran</th><th>Jumlah</th><th>Pesan</th></tr></thead>
+                        <tbody id="adminRsvpTableBody"><tr><td colspan="6" style="text-align:center;">Memuat data RSVP...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 10: SETTINGS & REGRESSION ================= -->
+        <div id="view-settings" class="view-section">
+            <button class="back-btn" onclick="switchView('view-dashboard')">← Kembali ke Dashboard</button>
+            <div class="card">
+                <h2>Pengaturan & Final Verification</h2>
+                <div style="font-size: 0.8125rem; margin-top: 8px; margin-bottom: 12px;">
+                    <p><strong>UserID Aktif:</strong> <span id="lblUserIdSetting">-</span></p>
+                    <p><strong>Versi Aplikasi:</strong> 1.15.0 (Final Build Production)</p>
+                </div>
+                <button onclick="executeRegressionTest()" style="background:var(--primary); margin-bottom: 10px;">🛡️ Jalankan Final Regression Test</button>
+                <pre id="regressionOutput">// Hasil verifikasi akhir sistem akan muncul di sini...</pre>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Hidden Audio Player -->
+    <audio id="bgAudioPlayer" loop></audio>
+
+    <script>
+        // Konfigurasi Web App URL Produksi
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwJoS2nw9mmEiQNgTG5hMo17mjmYvmZt4StaAlp87BJ4x9J413-lr6boAyrOgMXHyS3/exec";
+
+        const serverPublishId = "<?= publishId ?>";
+        let currentUserId = "";
+        let currentProject = {
+            projectID: "", userId: "", version: "1.15.0", schemaVersion: "1.1.0", templateID: "CUSTOM_01", themeID: "THEME_DEFAULT", status: "DRAFT", background: "#ffffff",
+            music: { fileURL: "" },
+            invitation: { groomName: "Yudi Ariyanto", brideName: "Pasangan", eventDate: "2026-12-25T09:00", locationName: "Grand Ballroom", mapUrl: "#", bankInfo: "BCA 1234567890" },
+            elements: []
+        };
+        let selectedElementId = null;
+        let isMusicPlaying = false;
+        let countdownInterval = null;
+        let lastPublishedUrl = "";
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initUserSession();
+            if (serverPublishId && serverPublishId.trim() !== "") {
+                loadPublicInvitation(serverPublishId);
+            } else {
+                checkSystemConnection();
+                loadThemesAndLayoutsCatalog();
+            }
+        });
+
+        function log(text) {
+            const pre = document.getElementById('logOutput');
+            if(!pre) return;
+            const timestamp = new Date().toLocaleTimeString();
+            pre.innerText += `\n[${timestamp}] ${text}`;
+            pre.scrollTop = pre.scrollHeight;
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function initUserSession() {
+            let uid = localStorage.getItem('DE_USER_ID');
+            if (!uid) {
+                uid = 'USER_' + Math.random().toString(36).substring(2, 9).toUpperCase();
+                localStorage.setItem('DE_USER_ID', uid);
+            }
+            currentUserId = uid;
+            document.getElementById('userBadge').innerText = uid;
+            document.getElementById('lblUserIdSetting').innerText = uid;
+            google.script.run.withSuccessHandler(res => { if(res.success) log("User terdaftar di server: " + res.userId); }).registerOrGetUser(uid);
+        }
+
+        function checkSystemConnection() {
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (res.status === "OK") {
+                        document.getElementById('systemStatusBadge').className = 'badge ok';
+                        document.getElementById('systemStatusBadge').innerText = 'CONNECTED (v1.15.0)';
+                        log("Koneksi GAS terhubung sempurna (Final Build).");
+                    } else {
+                        document.getElementById('systemStatusBadge').className = 'badge err';
+                        document.getElementById('systemStatusBadge').innerText = 'ERROR';
+                    }
+                })
+                .getSystemStatus();
+        }
+
+        function runInitialization() {
+            const btn = document.getElementById('initBtn');
+            const spinner = document.getElementById('initSpinner');
+            btn.disabled = true; spinner.style.display = 'inline-block';
+            google.script.run
+                .withSuccessHandler(res => {
+                    btn.disabled = false; spinner.style.display = 'none';
+                    if (res.success) { log("Inisialisasi final sukses: " + res.message); loadThemesAndLayoutsCatalog(); }
+                })
+                .initializeSystem();
+        }
+
+        function executeRegressionTest() {
+            const outPre = document.getElementById('regressionOutput');
+            outPre.innerText = "Menjalankan Final Regression Test...";
+            google.script.run
+                .withSuccessHandler(res => {
+                    let text = `Status: ${res.success ? 'PASSED ✅ (Production Ready)' : 'FAILED ❌'}\nSummary: ${res.summary}\n\nDetail Verifikasi Sistem:\n`;
+                    res.details.forEach(d => {
+                        text += `- [${d.status}] ${d.test}\n`;
+                    });
+                    outPre.innerText = text;
+                })
+                .runRegressionTest();
+        }
+
+        function loadAdminData() {
+            document.getElementById('statUsers').innerText = "...";
+            document.getElementById('statProjects').innerText = "...";
+            document.getElementById('statRSVP').innerText = "...";
+            document.getElementById('statPublished').innerText = "...";
+            document.getElementById('adminRsvpTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center;">Memuat data...</td></tr>`;
+
+            google.script.run.withSuccessHandler(res => {
+                if (res.success) {
+                    document.getElementById('statUsers').innerText = res.stats.totalUsers;
+                    document.getElementById('statProjects').innerText = res.stats.totalProjects;
+                    document.getElementById('statRSVP').innerText = res.stats.totalRSVP;
+                    document.getElementById('statPublished').innerText = res.stats.totalPublished;
+
+                    let html = '';
+                    if (res.recentRSVPs.length === 0) {
+                        html = `<tr><td colspan="6" style="text-align:center;">Belum ada data RSVP.</td></tr>`;
+                    } else {
+                        res.recentRSVPs.forEach(r => {
+                            const timeStr = r.timestamp ? new Date(r.timestamp).toLocaleString() : '-';
+                            html += `<tr>
+                                <td>${timeStr}</td>
+                                <td>${r.projectID}</td>
+                                <td><strong>${r.name}</strong></td>
+                                <td><span class="badge ${r.attendance === 'Hadir' ? 'ok' : 'err'}">${r.attendance}</span></td>
+                                <td>${r.guestCount}</td>
+                                <td>${r.message || '-'}</td>
+                            </tr>`;
+                        });
+                    }
+                    document.getElementById('adminRsvpTableBody').innerHTML = html;
+                }
+            }).getAdminDashboardData();
+        }
+
+        function openExportModal() {
+            document.getElementById('exportModalBox').style.display = 'block';
+            if (!lastPublishedUrl) {
+                lastPublishedUrl = WEB_APP_URL + "?p=" + currentProject.projectID;
+            }
+            document.getElementById('sharePublicUrlInput').value = lastPublishedUrl;
+        }
+
+        function publishCurrentProjectForShare() {
+            const payload = {
+                projectID: currentProject.projectID, userId: currentUserId, version: "1.15.0", schemaVersion: "1.1.0",
+                templateID: currentProject.templateID, themeID: currentProject.themeID, status: "PUBLISHED", dataJSON: JSON.stringify(currentProject)
+            };
+            google.script.run.withSuccessHandler(res => {
+                if (res.success) { 
+                    lastPublishedUrl = res.publicURL || (WEB_APP_URL + "?p=" + currentProject.projectID); 
+                    document.getElementById('sharePublicUrlInput').value = lastPublishedUrl; 
+                }
+            }).publishProject(payload);
+        }
+
+        function publishCurrentProject() {
+            const payload = {
+                projectID: currentProject.projectID, userId: currentUserId, version: "1.15.0", schemaVersion: "1.1.0",
+                templateID: currentProject.templateID, themeID: currentProject.themeID, status: "PUBLISHED", dataJSON: JSON.stringify(currentProject)
+            };
+            google.script.run.withSuccessHandler(res => {
+                if (res.success) {
+                    lastPublishedUrl = res.publicURL || (WEB_APP_URL + "?p=" + currentProject.projectID);
+                    alert("Undangan Berhasil Dipublikasikan!\nTautan Publik:\n" + lastPublishedUrl);
+                    prompt("Salin Tautan Undangan Anda:", lastPublishedUrl);
+                } else { alert("Gagal mempublikasikan: " + res.message); }
+            }).publishProject(payload);
+        }
+
+        function shareWhatsApp() {
+            const guestName = document.getElementById('shareGuestName').value.trim() || "Tamu Undangan";
+            const groom = currentProject.invitation?.groomName || "Mempelai Pria";
+            const bride = currentProject.invitation?.brideName || "Mempelai Wanita";
+            const url = lastPublishedUrl || (WEB_APP_URL + "?p=" + currentProject.projectID);
+
+            const text = `Halo ${guestName},\n\nTanpa mengurangi rasa hormat, kami mengundang Bapak/Ibu/Saudara/i untuk hadir di acara pernikahan kami:\n\n*${groom} & ${bride}*\n\nInformasi lengkap dan RSVP dapat dilihat melalui tautan berikut:\n${url}\n\nMerupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir.\n\nTerima kasih.`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        function downloadProjectJson() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentProject, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `${currentProject.projectID}_backup.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            alert("File backup JSON berhasil diunduh.");
+        }
+
+        function loadPublicInvitation(projectId) {
+            document.getElementById('mainHeader').style.display = 'none';
+            document.getElementById('mainAppContainer').style.display = 'none';
+            const overlay = document.getElementById('publicViewerOverlay');
+            overlay.style.display = 'flex';
+
+            google.script.run.withSuccessHandler(res => {
+                if (res.success && res.dataJSON) {
+                    try { currentProject = JSON.parse(res.dataJSON); } catch(e) { currentProject = { invitation: {}, elements: [] }; }
+                    renderPublicViewer();
+                } else {
+                    document.getElementById('publicCardContent').innerHTML = `<h3 style="color:var(--error); padding:20px;">Undangan tidak ditemukan atau telah dihapus.</h3>`;
+                }
+            }).getPublishedProjectData(projectId);
+        }
+
+        function renderPublicViewer() {
+            const card = document.getElementById('publicCardContent');
+            const inv = currentProject.invitation || {};
+            card.style.backgroundColor = currentProject.background || '#ffffff';
+
+            card.innerHTML = `
+                <div class="invitation-section">
+                    <p style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">The Wedding of</p>
+                    <h2 style="font-size:1.5rem; color:var(--primary); margin:8px 0;">${inv.groomName || 'Pria'} & ${inv.brideName || 'Wanita'}</h2>
+                    <p style="font-size:0.8rem;">${inv.eventDate ? new Date(inv.eventDate).toLocaleString() : 'Jadwal Acara'}</p>
+                </div>
+                <div class="invitation-section">
+                    <h4 style="font-size:0.85rem; margin-bottom:6px;">⏱️ Menuju Hari Bahagia</h4>
+                    <div class="countdown-box">
+                        <div class="countdown-item"><span id="cdDays">0</span><br><small>Hari</small></div>
+                        <div class="countdown-item"><span id="cdHours">0</span><br><small>Jam</small></div>
+                        <div class="countdown-item"><span id="cdMins">0</span><br><small>Menit</small></div>
+                        <div class="countdown-item"><span id="cdSecs">0</span><br><small>Detik</small></div>
+                    </div>
+                </div>
+                <div class="invitation-section">
+                    <h4 style="font-size:0.85rem; margin-bottom:4px;">📍 Lokasi Acara</h4>
+                    <p style="font-size:0.75rem; color:var(--text-muted);">${inv.locationName || 'Belum diatur'}</p>
+                    <a href="${inv.mapUrl || '#'}" target="_blank" style="display:inline-block; margin-top:6px; font-size:0.75rem; color:var(--primary);">Buka Google Maps →</a>
+                </div>
+                <div class="invitation-section">
+                    <h4 style="font-size:0.85rem; margin-bottom:4px;">🎁 Kirim Hadiah</h4>
+                    <p style="font-size:0.75rem; background:#f8fafc; padding:8px; border-radius:6px; border:1px solid var(--border);">${inv.bankInfo || 'Belum ada info rekening'}</p>
+                </div>
+                <div class="invitation-section" style="text-align:left; background:#fafafa;">
+                    <h4 style="font-size:0.85rem; margin-bottom:6px; text-align:center;">💌 RSVP & Kehadiran</h4>
+                    <form id="rsvpFormElement" class="rsvp-form" onsubmit="submitRSVPForm(event)">
+                        <div class="input-row"><label>Nama Tamu</label><input type="text" id="rsvpName" required placeholder="Nama Anda"></div>
+                        <div class="input-row"><label>Konfirmasi</label><select id="rsvpAttendance"><option value="Hadir">Hadir</option><option value="Tidak Hadir">Berhalangan</option></select></div>
+                        <div class="input-row"><label>Jumlah Tamu</label><input type="number" id="rsvpCount" value="1" min="1" max="5"></div>
+                        <div class="input-row"><label>Ucapan & Doa</label><textarea id="rsvpMessage" rows="2" placeholder="Tulis doa..."></textarea></div>
+                        <button type="submit" style="padding:8px; font-size:0.8rem; margin-top:6px;">Kirim RSVP</button>
+                    </form>
+                </div>
+                <div class="music-widget" onclick="userInteractPlayMusic()">
+                    <span id="musicWidgetIcon">🎵</span>
+                    <span id="musicWidgetText">Putar Musik</span>
+                </div>
+            `;
+            if (currentProject.music?.fileURL) document.getElementById('bgAudioPlayer').src = currentProject.music.fileURL;
+            startCountdown();
+        }
+
+        function updateInvitationData(key, val) {
+            currentProject.invitation = currentProject.invitation || {};
+            currentProject.invitation[key] = val;
+            renderCanvas(); saveDraftLocal();
+        }
+
+        function updateProjectMusic(url) {
+            currentProject.music = currentProject.music || {};
+            currentProject.music.fileURL = url;
+            document.getElementById('bgAudioPlayer').src = url;
+            saveDraftLocal();
+        }
+
+        function userInteractPlayMusic() {
+            const audio = document.getElementById('bgAudioPlayer');
+            const widgetText = document.getElementById('musicWidgetText');
+            const widgetIcon = document.getElementById('musicWidgetIcon');
+            if (!audio.src || audio.src === window.location.href) {
+                audio.src = currentProject.music?.fileURL || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+            }
+            if (isMusicPlaying) {
+                audio.pause(); isMusicPlaying = false;
+                widgetText.innerText = "Putar Musik"; widgetIcon.innerText = "▶";
+            } else {
+                audio.play().then(() => {
+                    isMusicPlaying = true;
+                    widgetText.innerText = "Musik Diputar ♫"; widgetIcon.innerText = "⏸";
+                }).catch(err => { alert("Gagal memutar audio."); });
+            }
+        }
+
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            const targetDateStr = currentProject.invitation?.eventDate;
+            if (!targetDateStr) return;
+            const targetTime = new Date(targetDateStr).getTime();
+            const daysEl = document.getElementById('cdDays');
+            const hoursEl = document.getElementById('cdHours');
+            const minsEl = document.getElementById('cdMins');
+            const secsEl = document.getElementById('cdSecs');
+            if (!daysEl) return;
+
+            countdownInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const diff = targetTime - now;
+                if (diff < 0) { clearInterval(countdownInterval); return; }
+                daysEl.innerText = Math.floor(diff / (1000 * 60 * 60 * 24));
+                hoursEl.innerText = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                minsEl.innerText = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                secsEl.innerText = Math.floor((diff % (1000 * 60)) / 1000);
+            }, 1000);
+        }
+
+        function submitRSVPForm(event) {
+            event.preventDefault();
+            const name = document.getElementById('rsvpName').value;
+            const attendance = document.getElementById('rsvpAttendance').value;
+            const guestCount = document.getElementById('rsvpCount').value;
+            const message = document.getElementById('rsvpMessage').value;
+
+            google.script.run.withSuccessHandler(res => {
+                if (res.success) {
+                    alert("Terima kasih! Konfirmasi kehadiran berhasil dikirim.");
+                    document.getElementById('rsvpFormElement').reset();
+                } else { alert("Gagal mengirim RSVP: " + res.message); }
+            }).submitRSVP({ projectID: currentProject.projectID, name, attendance, guestCount, message });
+        }
+
+        function loadThemesAndLayoutsCatalog() {
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) {
+                    const globalBox = document.getElementById('globalThemeList');
+                    let globalHtml = '';
+                    res.themes.forEach(th => {
+                        globalHtml += `<div class="list-item"><div><strong>${th.name}</strong><br><small>Bg: ${th.bgColor}</small></div><span class="badge ok">${th.themeID}</span></div>`;
+                    });
+                    if(globalBox) globalBox.innerHTML = globalHtml;
+                }
+            }).getThemesCatalog();
+        }
+
+        function loadTemplatesCatalog() {
+            const container = document.getElementById('templatesCatalogContainer');
+            container.innerHTML = 'Memuat katalog template...';
+            google.script.run.withSuccessHandler(res => {
+                if (res.success && res.templates.length > 0) {
+                    let html = '';
+                    res.templates.forEach(t => {
+                        html += `<div class="template-card" onclick='openEditorWithTemplate(${JSON.stringify(t)})'><span class="badge ok">${t.category}</span><h4 style="font-size: 0.9375rem; margin-top: 6px;">${t.name}</h4></div>`;
+                    });
+                    container.innerHTML = html;
+                }
+            }).getTemplatesCatalog();
+        }
+
+        function openEditorWithTemplate(templateObj) {
+            const projectID = 'PROJ_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            let config = {};
+            try { config = typeof templateObj.configJSON === 'string' ? JSON.parse(templateObj.configJSON) : templateObj.configJSON; } catch(e) { config = { background: '#ffffff', elements: [] }; }
+
+            currentProject = {
+                projectID: projectID, userId: currentUserId, version: "1.15.0", schemaVersion: "1.1.0",
+                templateID: templateObj.templateID, themeID: "THEME_DEFAULT", status: "DRAFT",
+                background: config.background || '#ffffff',
+                music: config.music || { fileURL: "" },
+                invitation: config.invitation || { groomName: "Yudi Ariyanto", brideName: "Pasangan", eventDate: "2026-12-25T09:00", locationName: "Grand Ballroom", mapUrl: "#", bankInfo: "BCA 1234567890" },
+                elements: config.elements || []
+            };
+
+            if (currentProject.invitation) {
+                document.getElementById('invGroom').value = currentProject.invitation.groomName || '';
+                document.getElementById('invBride').value = currentProject.invitation.brideName || '';
+                document.getElementById('invDate').value = currentProject.invitation.eventDate || '';
+                document.getElementById('invLocation').value = currentProject.invitation.locationName || '';
+                document.getElementById('invBank').value = currentProject.invitation.bankInfo || '';
+            }
+            if (currentProject.music?.fileURL) {
+                document.getElementById('musicUrlInput').value = currentProject.music.fileURL;
+                document.getElementById('bgAudioPlayer').src = currentProject.music.fileURL;
+            }
+
+            selectedElementId = null; saveDraftLocal(); renderCanvas(); switchView('view-editor');
+            setTimeout(startCountdown, 200);
+        }
+
+        function saveDraftLocal() { localStorage.setItem('PROJECT_DRAFT_' + currentProject.projectID, JSON.stringify(currentProject)); }
+
+        function renderCanvas() {
+            const canvas = document.getElementById('mainCanvas');
+            const widget = document.getElementById('musicWidgetBtn');
+            canvas.innerHTML = ''; canvas.appendChild(widget);
+            canvas.style.backgroundColor = currentProject.background || '#ffffff';
+
+            const inv = currentProject.invitation || {};
+            const invContainer = document.createElement('div');
+            invContainer.innerHTML = `
+                <div class="invitation-section">
+                    <p style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">The Wedding of</p>
+                    <h2 style="font-size:1.25rem; color:var(--primary); margin:6px 0;">${inv.groomName || 'Pria'} & ${inv.brideName || 'Wanita'}</h2>
+                    <p style="font-size:0.75rem;">${inv.eventDate ? new Date(inv.eventDate).toLocaleString() : 'Jadwal Acara'}</p>
+                </div>
+                <div class="invitation-section">
+                    <h4 style="font-size:0.8rem; margin-bottom:4px;">⏱️ Menuju Hari Bahagia</h4>
+                    <div class="countdown-box">
+                        <div class="countdown-item"><span id="cdDays">0</span><br><small>Hari</small></div>
+                        <div class="countdown-item"><span id="cdHours">0</span><br><small>Jam</small></div>
+                        <div class="countdown-item"><span id="cdMins">0</span><br><small>Menit</small></div>
+                        <div class="countdown-item"><span id="cdSecs">0</span><br><small>Detik</small></div>
+                    </div>
+                </div>
+                <div class="invitation-section">
+                    <h4 style="font-size:0.8rem; margin-bottom:4px;">📍 Lokasi Acara</h4>
+                    <p style="font-size:0.75rem; color:var(--text-muted);">${inv.locationName || 'Belum diatur'}</p>
+                    <a href="${inv.mapUrl || '#'}" target="_blank" style="display:inline-block; margin-top:6px; font-size:0.75rem; color:var(--primary);">Buka Google Maps →</a>
+                </div>
+                <div class="invitation-section">
+                    <h4 style="font-size:0.8rem; margin-bottom:4px;">🎁 Kirim Hadiah</h4>
+                    <p style="font-size:0.75rem; background:#f8fafc; padding:6px; border-radius:6px; border:1px solid var(--border);">${inv.bankInfo || 'Belum ada info rekening'}</p>
+                </div>
+                <div class="invitation-section" style="text-align:left; background:#fafafa;">
+                    <h4 style="font-size:0.8rem; margin-bottom:6px; text-align:center;">💌 RSVP & Kehadiran</h4>
+                    <form id="rsvpFormElement" class="rsvp-form" onsubmit="submitRSVPForm(event)">
+                        <div class="input-row"><label>Nama Tamu</label><input type="text" id="rsvpName" required placeholder="Nama Anda"></div>
+                        <div class="input-row"><label>Konfirmasi</label><select id="rsvpAttendance"><option value="Hadir">Hadir</option><option value="Tidak Hadir">Berhalangan</option></select></div>
+                        <div class="input-row"><label>Jumlah Tamu</label><input type="number" id="rsvpCount" value="1" min="1" max="5"></div>
+                        <div class="input-row"><label>Ucapan & Doa</label><textarea id="rsvpMessage" rows="2" placeholder="Tulis doa..."></textarea></div>
+                        <button type="submit" style="padding:6px; font-size:0.75rem; margin-top:4px;">Kirim RSVP</button>
+                    </form>
+                </div>
+            `;
+            canvas.appendChild(invContainer);
+
+            currentProject.elements.sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1)).forEach(el => {
+                const div = document.createElement('div');
+                div.id = el.id;
+                div.className = 'canvas-object' + (el.id === selectedElementId ? ' selected' : '');
+                div.style.left = el.x + 'px'; div.style.top = (el.y + 450) + 'px'; div.style.zIndex = el.zIndex || 1;
+
+                if (el.type === 'text') {
+                    div.innerText = el.content; div.style.fontSize = el.size + 'px'; div.style.color = el.color || '#1e293b';
+                } else if (el.type === 'shape') {
+                    div.style.width = (el.size * 5) + 'px'; div.style.height = '60px'; div.style.backgroundColor = el.color || '#cbd5e1'; div.style.borderRadius = '6px';
+                }
+
+                div.onmousedown = (e) => startDrag(e, el.id); div.ontouchstart = (e) => startDrag(e, el.id);
+                canvas.appendChild(div);
+            });
+            startCountdown();
+            updatePropertyPanel();
+        }
+
+        function clearSelection(e) { if (e.target.id === 'mainCanvas') { selectedElementId = null; renderCanvas(); } }
+
+        let startX = 0, startY = 0;
+        function startDrag(e, id) {
+            e.stopPropagation(); selectedElementId = id; renderCanvas();
+            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            const el = currentProject.elements.find(item => item.id === id);
+            if (!el) return;
+            startX = clientX - el.x; startY = clientY - el.y;
+            document.onmousemove = onDrag; document.onmouseup = stopDrag;
+            document.ontouchmove = onDrag; document.ontouchend = stopDrag;
+        }
+
+        function onDrag(e) {
+            if (!selectedElementId) return;
+            const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            const el = currentProject.elements.find(item => item.id === selectedElementId);
+            if (el) { el.x = Math.max(0, clientX - startX); el.y = Math.max(0, clientY - startY); renderCanvas(); }
+        }
+
+        function stopDrag() { document.onmousemove = null; document.onmouseup = null; document.ontouchmove = null; document.ontouchend = null; saveDraftLocal(); }
+
+        function updatePropertyPanel() {
+            const panel = document.getElementById('propertyPanel');
+            const rowText = document.getElementById('rowTextContent');
+            if (!selectedElementId) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            const el = currentProject.elements.find(item => item.id === selectedElementId);
+            if (!el) return;
+            if (el.type === 'text') {
+                rowText.style.display = 'flex';
+                document.getElementById('propText').value = el.content;
+                document.getElementById('propSize').value = el.size;
+            } else { rowText.style.display = 'none'; document.getElementById('propSize').value = el.size; }
+        }
+
+        function updateSelectedObjectProp(prop, val) {
+            if (!selectedElementId) return;
+            const el = currentProject.elements.find(item => item.id === selectedElementId);
+            if (el) { if (prop === 'content') el.content = val; if (prop === 'size') el.size = val; renderCanvas(); saveDraftLocal(); }
+        }
+
+        function addObject(type) {
+            const newId = 'el_' + Math.random().toString(36).substring(2, 7);
+            const maxZ = currentProject.elements.reduce((max, item) => Math.max(max, item.zIndex || 0), 0);
+            let newEl = { id: newId, type: type, x: 60, y: 20, size: type === 'text' ? 18 : 20, color: '#0f172a', zIndex: maxZ + 1 };
+            if (type === 'text') newEl.content = 'Teks Tambahan';
+            currentProject.elements.push(newEl); selectedElementId = newId; renderCanvas(); saveDraftLocal();
+        }
+
+        function deleteSelected() {
+            if (!selectedElementId) return;
+            currentProject.elements = currentProject.elements.filter(item => item.id !== selectedElementId);
+            selectedElementId = null; renderCanvas(); saveDraftLocal();
+        }
+
+        function saveCurrentProject() {
+            const payload = {
+                projectID: currentProject.projectID, userId: currentUserId, version: "1.15.0", schemaVersion: "1.1.0",
+                templateID: currentProject.templateID, themeID: currentProject.themeID, status: "DRAFT", dataJSON: JSON.stringify(currentProject)
+            };
+            google.script.run.withSuccessHandler(res => {
+                if (res.success) { alert("Project berhasil disimpan ke server!"); } else { alert("Gagal: " + res.message); }
+            }).saveProjectData(payload);
+        }
+
+        function loadUserProjects() {
+            const container = document.getElementById('projectListContainer');
+            container.innerHTML = 'Memuat project...';
+            google.script.run.withSuccessHandler(res => {
+                if (res.success) {
+                    let html = '';
+                    if (res.projects.length === 0) html = '<div class="list-item"><span>Belum ada project.</span></div>';
+                    else res.projects.forEach(p => {
+                        html += `<div class="list-item"><div><strong>${p.projectID}</strong> (${p.status})</div><button onclick="openExistingProject('${p.projectID}', '${encodeURIComponent(p.dataJSON)}')" style="width:auto; padding:4px 10px; font-size:0.75rem;">Edit</button></div>`;
+                    });
+                    container.innerHTML = html;
+                }
+            }).getUserProjects(currentUserId);
+        }
+
+        function openExistingProject(id, jsonStr) {
+            try { currentProject = JSON.parse(decodeURIComponent(jsonStr)); } catch(e) { currentProject = { projectID: id, userId: currentUserId, elements: [] }; }
+            if (currentProject.invitation) {
+                document.getElementById('invGroom').value = currentProject.invitation.groomName || '';
+                document.getElementById('invBride').value = currentProject.invitation.brideName || '';
+                document.getElementById('invDate').value = currentProject.invitation.eventDate || '';
+                document.getElementById('invLocation').value = currentProject.invitation.locationName || '';
+                document.getElementById('invBank').value = currentProject.invitation.bankInfo || '';
+            }
+            if (currentProject.music?.fileURL) {
+                document.getElementById('musicUrlInput').value = currentProject.music.fileURL;
+                document.getElementById('bgAudioPlayer').src = currentProject.music.fileURL;
+            }
+            selectedElementId = null; renderCanvas(); switchView('view-editor');
+            setTimeout(startCountdown, 200);
+        }
+    </script>
+</body>
+</html>
