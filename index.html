@@ -393,12 +393,14 @@
             google.script.run
                 .withSuccessHandler(res => {
                     if (res.status === "OK") {
-                        document.getElementById('systemStatusBadge').className = 'badge ok';
-                        document.getElementById('systemStatusBadge').innerText = 'CONNECTED (v1.15.0)';
+                        const badge = document.getElementById('systemStatusBadge');
+                        badge.className = 'badge ok';
+                        badge.innerText = 'CONNECTED (v1.15.0)';
                         log("Koneksi GAS terhubung sempurna (Final Build).");
                     } else {
-                        document.getElementById('systemStatusBadge').className = 'badge err';
-                        document.getElementById('systemStatusBadge').innerText = 'ERROR';
+                        const badge = document.getElementById('systemStatusBadge');
+                        badge.className = 'badge err';
+                        badge.innerText = 'ERROR';
                     }
                 })
                 .getSystemStatus();
@@ -408,10 +410,26 @@
             const btn = document.getElementById('initBtn');
             const spinner = document.getElementById('initSpinner');
             btn.disabled = true; spinner.style.display = 'inline-block';
+            
             google.script.run
                 .withSuccessHandler(res => {
                     btn.disabled = false; spinner.style.display = 'none';
-                    if (res.success) { log("Inisialisasi final sukses: " + res.message); loadThemesAndLayoutsCatalog(); }
+                    if (res.success) { 
+                        log("Inisialisasi final sukses: " + res.message); 
+                        loadThemesAndLayoutsCatalog(); 
+                        
+                        // Otomatis ubah badge status jadi CONNECTED
+                        const badge = document.getElementById('systemStatusBadge');
+                        badge.className = 'badge ok';
+                        badge.innerText = 'CONNECTED (v1.15.0)';
+                    } else {
+                        log("Inisialisasi gagal: " + res.message);
+                    }
+                })
+                .withFailureHandler(err => {
+                    btn.disabled = false; spinner.style.display = 'none';
+                    log("Error Sistem: " + err.toString());
+                    alert("Terjadi kesalahan sistem: " + err.toString());
                 })
                 .initializeSystem();
         }
