@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #f4f6f9; padding-bottom: 90px; }
-        .card-stat { border-radius: 12px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card-stat { border-radius: 12px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;}
+        .card-stat:active { transform: scale(0.95); } /* Efek saat kartu diklik */
         .table-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;}
         
         .bottom-navbar {
@@ -33,10 +34,7 @@
         .border-left-warning { border-left: 5px solid #ffc107; }
         .border-left-success { border-left: 5px solid #198754; }
 
-        /* ANIMASI NOTIFIKASI KARTU DIPINJAM (PULSE) */
-        .pulse-warning {
-            animation: pulse-warn 1.5s infinite;
-        }
+        .pulse-warning { animation: pulse-warn 1.5s infinite; }
         @keyframes pulse-warn {
             0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
             70% { box-shadow: 0 0 0 12px rgba(255, 193, 7, 0); }
@@ -48,41 +46,37 @@
 
 <div id="loader"><div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div><h4 class="mt-3 text-primary fw-bold">Memuat Data...</h4></div>
 
-<!-- Sinkronisasi Data Warga & Petugas -->
-<datalist id="data-warga-list">
-    <!-- Diisi Otomatis via JavaScript -->
-</datalist>
-
 <nav class="navbar navbar-dark bg-dark mb-4 shadow-sm">
     <div class="container d-flex justify-content-between">
         <span class="navbar-brand mb-0 h1 fw-bold"><i class="fas fa-boxes text-warning"></i> INVENTARIS RT</span>
-        <span class="badge bg-secondary">v1.4</span>
+        <span class="badge bg-secondary">v1.5</span>
     </div>
 </nav>
 
 <div class="container">
+    <!-- KARTU DASHBOARD AKTIF BISA DIKLIK -->
     <div class="row mb-3">
         <div class="col-4">
-            <div class="card card-stat bg-primary text-white h-100 text-center p-2">
+            <div class="card card-stat bg-primary text-white h-100 text-center p-2" onclick="scrollToElement('section-inventaris')">
                 <h6 style="font-size:0.7rem; margin-bottom:2px;">Macam Barang</h6>
                 <h4 class="mb-0 fw-bold" id="dash-macam">0</h4>
             </div>
         </div>
         <div class="col-4">
-            <div class="card card-stat bg-success text-white h-100 text-center p-2">
+            <div class="card card-stat bg-success text-white h-100 text-center p-2" onclick="scrollToElement('section-inventaris')">
                 <h6 style="font-size:0.7rem; margin-bottom:2px;">Stok Tersedia</h6>
                 <h4 class="mb-0 fw-bold" id="dash-stok">0</h4>
             </div>
         </div>
         <div class="col-4">
-            <!-- Kartu ini akan berkedip (Pulse) jika ada barang dipinjam -->
-            <div class="card card-stat bg-warning text-dark h-100 text-center p-2" id="card-pinjam-notif">
+            <div class="card card-stat bg-warning text-dark h-100 text-center p-2" id="card-pinjam-notif" onclick="scrollToElement('section-transaksi')">
                 <h6 style="font-size:0.7rem; margin-bottom:2px; font-weight:bold;">Jml Dipinjam</h6>
                 <h4 class="mb-0 fw-bold" id="dash-pinjam">0</h4>
             </div>
         </div>
     </div>
 
+    <!-- LIST TRANSAKSI CEPAT -->
     <div class="row mb-4">
         <div class="col-md-6 mb-3">
             <div class="p-3 rounded" style="background-color: #fff8e1; border: 1px solid #ffecb3;">
@@ -98,6 +92,7 @@
         </div>
     </div>
 
+    <!-- TABEL INVENTARIS -->
     <div class="table-container" id="section-inventaris">
         <h5 class="fw-bold mb-3"><i class="fas fa-list text-primary"></i> Data Master Inventaris</h5>
         <div class="table-responsive">
@@ -110,6 +105,7 @@
         </div>
     </div>
 
+    <!-- TABEL TRANSAKSI -->
     <div class="table-container" id="section-transaksi">
         <h5 class="fw-bold mb-3"><i class="fas fa-history text-secondary"></i> Riwayat Transaksi Keseluruhan</h5>
         <div class="table-responsive">
@@ -122,22 +118,35 @@
         </div>
     </div>
 
-    <!-- Teks Update & Powered By -->
+    <!-- TABEL DATA WARGA (BARU) -->
+    <div class="table-container" id="section-warga">
+        <h5 class="fw-bold mb-3"><i class="fas fa-users text-info"></i> Master Data Warga</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle text-nowrap" style="font-size: 0.9rem;">
+                <thead class="table-light">
+                    <tr><th>No</th><th>Nama Warga</th><th>Blok / RT / Keterangan</th></tr>
+                </thead>
+                <tbody id="table-warga-master"></tbody>
+            </table>
+        </div>
+    </div>
+
     <div class="text-center mt-5 mb-5 pb-4">
         <h6 class="text-secondary fw-bold mb-1"><i class="fas fa-bolt text-warning"></i> Powered By Ari GPM</h6>
-        <small class="text-muted">Versi Update Terkini: v1.4</small>
+        <small class="text-muted">Versi Update Terkini: v1.5</small>
     </div>
 </div>
 
 <nav class="bottom-navbar">
     <a href="#" class="nav-item-bottom" data-bs-toggle="modal" data-bs-target="#modalBarang"><i class="fas fa-box-open text-primary"></i><span>Barang</span></a>
     <a href="#" class="nav-item-bottom" data-bs-toggle="modal" data-bs-target="#modalTransaksi"><i class="fas fa-exchange-alt text-danger"></i><span>Transaksi</span></a>
-    <a href="#section-inventaris" class="nav-item-bottom"><i class="fas fa-list-alt text-secondary"></i><span>Inventaris</span></a>
+    <a href="#section-inventaris" class="nav-item-bottom" onclick="scrollToElement('section-inventaris')"><i class="fas fa-list-alt text-secondary"></i><span>Inventaris</span></a>
+    <!-- FUNGSI WARGA BERUBAH JADI INPUT DATA WARGA -->
     <a href="#" class="nav-item-bottom" data-bs-toggle="modal" data-bs-target="#modalWarga"><i class="fas fa-users text-info"></i><span>Warga</span></a>
     <a href="#" class="nav-item-bottom" onclick="shareWA()"><i class="fab fa-whatsapp text-success"></i><span>Share</span></a>
 </nav>
 
-<!-- Modal Barang -->
+<!-- Modal Tambah Barang -->
 <div class="modal fade" id="modalBarang" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
@@ -153,7 +162,7 @@
   </div>
 </div>
 
-<!-- Modal Transaksi -->
+<!-- Modal Catat Transaksi -->
 <div class="modal fade" id="modalTransaksi" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
@@ -162,6 +171,7 @@
         <form id="formTransaksi">
             <div class="mb-3">
                 <label class="form-label fw-bold">Kategori Transaksi</label>
+                <!-- Opsi sudah disesuaikan agar auto status aktif -->
                 <select class="form-select border-dark" id="inpTransJenis" required>
                     <option value="Barang Di pinjam" selected>Barang Di pinjam</option>
                     <option value="Barang kembali">Barang kembali</option>
@@ -172,14 +182,17 @@
             <div class="mb-3"><label class="form-label fw-bold">Pilih Barang</label><select class="form-select" id="inpTransBarang" required></select></div>
             <div class="mb-3"><label class="form-label fw-bold">Jumlah (Qty)</label><input type="number" class="form-control" id="inpTransJumlah" min="1" value="1" required></div>
             
-            <!-- Input Warga & Petugas menggunakan auto-complete dari database -->
             <div class="mb-3">
-                <label class="form-label fw-bold text-primary">Data Warga (Nama/Keterangan)</label>
-                <input type="text" class="form-control border-primary" id="inpTransWarga" list="data-warga-list" autocomplete="off" placeholder="Pilih atau Ketik Baru..." required>
+                <label class="form-label fw-bold text-primary">Pilih Data Warga</label>
+                <!-- Select Dropdown Otomatis dari Master Warga (Tidak Perlu Ngetik) -->
+                <select class="form-select border-primary" id="inpTransWarga" required>
+                     <option value="">-- Pilih Warga --</option>
+                </select>
             </div>
+            
             <div class="mb-4">
                 <label class="form-label fw-bold">Nama Petugas Pengelola</label>
-                <input type="text" class="form-control" id="inpTransPetugas" list="data-warga-list" autocomplete="off" placeholder="Pilih atau Ketik..." required>
+                <input type="text" class="form-control" id="inpTransPetugas" placeholder="Ketik nama admin..." required>
             </div>
             <button type="submit" class="btn btn-dark w-100 fw-bold py-2">Simpan Transaksi</button>
         </form>
@@ -188,26 +201,37 @@
   </div>
 </div>
 
-<!-- Modal Daftar Warga -->
+<!-- Modal Tambah Data Warga (BARU) -->
 <div class="modal fade" id="modalWarga" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-info text-white">
-        <h5 class="modal-title fw-bold"><i class="fas fa-users"></i> Daftar Nama Warga</h5>
+        <h5 class="modal-title fw-bold"><i class="fas fa-user-plus"></i> Tambah Data Warga</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body bg-light">
-        <div class="list-group" id="list-warga-modal"></div>
+      <div class="modal-body">
+        <form id="formWarga">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Nama Lengkap Warga</label>
+                <input type="text" class="form-control" id="inpWargaNama" placeholder="Contoh: Budi Santoso" required>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold">Blok / RT / Keterangan</label>
+                <input type="text" class="form-control" id="inpWargaKet" placeholder="Contoh: Blok A / RT 01" required>
+            </div>
+            <button type="submit" class="btn btn-info text-white w-100 fw-bold py-2">Simpan Data Warga</button>
+        </form>
       </div>
     </div>
   </div>
 </div>
 
+
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // ==========================================
-    // URL WEB APP GOOGLE APPS SCRIPT ANDA
+    // MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI BAWAH INI
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxYhlZjTVfkYnWl5nIM_aJeqlxeqywO_-2ZY9e_Dho9BaVEss1OOXEUfJAYew2u8xDE2w/exec";
     // ==========================================
 
@@ -217,8 +241,13 @@
     function showLoader() { document.getElementById('loader').style.display = 'block'; }
     function hideLoader() { document.getElementById('loader').style.display = 'none'; }
 
+    // Fungsi Scroll untuk Kartu Dashboard & Navigasi
+    function scrollToElement(id) {
+        document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    }
+
     async function loadData() {
-        if(!GAS_URL || GAS_URL === "URL_GAS_ANDA_DISINI") return alert("Harap isi GAS_URL di script HTML!");
+        if(!GAS_URL || GAS_URL === "URL_GAS_ANDA_DISINI") return alert("Harap isi GAS_URL!");
         showLoader();
         try {
             const response = await fetch(GAS_URL + "?action=get_all");
@@ -228,10 +257,10 @@
                 renderDashboard(); 
                 renderBarang(); 
                 renderTransaksi(); 
-                renderWarga(); 
+                renderWarga(); // Render dropdown warga
             } 
             else alert("Error: " + result.message);
-        } catch(e) { alert("Gagal memuat database. Pastikan link Apps Script valid dan memiliki izin."); }
+        } catch(e) { alert("Gagal memuat database. Cek koneksi / URL."); }
         hideLoader();
     }
 
@@ -255,13 +284,9 @@
         document.getElementById('dash-stok').innerText = appData.dashboard.total_stok;
         document.getElementById('dash-pinjam').innerText = appData.dashboard.total_dipinjam;
 
-        // Efek Animasi Pulse jika ada barang yang dipinjam
         const cardNotif = document.getElementById('card-pinjam-notif');
-        if (appData.dashboard.total_dipinjam > 0) {
-            cardNotif.classList.add('pulse-warning');
-        } else {
-            cardNotif.classList.remove('pulse-warning');
-        }
+        if (appData.dashboard.total_dipinjam > 0) cardNotif.classList.add('pulse-warning');
+        else cardNotif.classList.remove('pulse-warning');
 
         const listPinjam = document.getElementById('dash-pinjam-list'); listPinjam.innerHTML = "";
         const dataPinjam = appData.transaksi.filter(t => t.status === 'Dipinjam');
@@ -296,7 +321,6 @@
             if(t.jenis === 'Barang Di pinjam') badgeColor = 'warning text-dark';
             if(t.jenis === 'Barang kembali') badgeColor = 'info text-dark';
             
-            // Pewarnaan Status Dinamis
             let statusHtml = "-";
             if(t.status === 'Dipinjam') statusHtml = `<span class="badge bg-warning text-dark">Dipinjam</span>`;
             else if(t.status === 'Dikembalikan') statusHtml = `<span class="badge bg-success">Dikembalikan</span>`;
@@ -307,38 +331,51 @@
         });
     }
 
-    // Fungsi Render Data Warga & Sinkronisasi Auto-Complete
+    // Render Dropdown Input Warga & Tabel Warga
     function renderWarga() {
-        const listWargaModal = document.getElementById('list-warga-modal');
-        const dataWargaList = document.getElementById('data-warga-list');
+        const selectWarga = document.getElementById('inpTransWarga');
+        const tableWarga = document.getElementById('table-warga-master');
         
-        listWargaModal.innerHTML = "";
-        dataWargaList.innerHTML = ""; // Bersihkan dropdown lama
-        
-        const wargaSet = new Set();
-        appData.transaksi.forEach(t => {
-            if(t.warga && t.warga !== "-" && t.warga.trim() !== "") { wargaSet.add(t.warga.trim()); }
-            if(t.petugas && t.petugas !== "-" && t.petugas.trim() !== "") { wargaSet.add(t.petugas.trim()); }
-        });
-        
-        const wargaArray = Array.from(wargaSet).sort();
-        
-        if(wargaArray.length === 0) {
-            listWargaModal.innerHTML = `<p class="text-muted text-center mt-3">Belum ada data warga terdaftar.</p>`;
-        } else {
-            wargaArray.forEach(w => {
-                // Isi untuk Modal
-                listWargaModal.innerHTML += `<div class="list-group-item list-group-item-action d-flex align-items-center mb-1 rounded shadow-sm border-0"><i class="fas fa-user-circle text-info fs-3 me-3"></i> <span class="fw-bold text-dark fs-5">${w}</span></div>`;
-                // Isi untuk Dropdown (Auto-Complete) form input
-                dataWargaList.innerHTML += `<option value="${w}">`;
-            });
+        selectWarga.innerHTML = "<option value=''>-- Pilih Warga --</option>";
+        tableWarga.innerHTML = "";
+
+        if(!appData.warga || appData.warga.length === 0) {
+            tableWarga.innerHTML = "<tr><td colspan='3' class='text-center text-muted'>Data warga masih kosong. Silakan tambah data warga.</td></tr>";
+            return;
         }
+
+        // Urutkan abjad
+        appData.warga.sort((a,b) => a.nama.localeCompare(b.nama));
+        
+        appData.warga.forEach((w, index) => {
+            // Masukkan ke dropdown Catat Transaksi
+            selectWarga.innerHTML += `<option value="${w.nama}">${w.nama} (${w.keterangan})</option>`;
+            
+            // Masukkan ke Tabel Data Warga
+            tableWarga.innerHTML += `
+            <tr>
+                <td>${index + 1}</td>
+                <td class="fw-bold text-primary"><i class="fas fa-user-circle me-1"></i> ${w.nama}</td>
+                <td>${w.keterangan}</td>
+            </tr>`;
+        });
     }
 
+    // FORM SUBMIT HANDLING
     document.getElementById('formBarang').addEventListener('submit', function(e) {
         e.preventDefault();
         sendPostRequest({ action: 'tambah_barang', nama: document.getElementById('inpBarangNama').value, stok_awal: document.getElementById('inpBarangStok').value });
         bootstrap.Modal.getInstance(document.getElementById('modalBarang')).hide(); this.reset();
+    });
+
+    document.getElementById('formWarga').addEventListener('submit', function(e) {
+        e.preventDefault();
+        sendPostRequest({ 
+            action: 'tambah_warga', 
+            nama_warga: document.getElementById('inpWargaNama').value, 
+            keterangan_warga: document.getElementById('inpWargaKet').value 
+        });
+        bootstrap.Modal.getInstance(document.getElementById('modalWarga')).hide(); this.reset();
     });
 
     document.getElementById('formTransaksi').addEventListener('submit', function(e) {
@@ -360,7 +397,6 @@
         }
     }
 
-    // Fungsi Laporan WA Ala Nota Dinamis yang Rapi
     function shareWA() {
         if(!appData) return;
         let d = new Date();
@@ -375,9 +411,7 @@
         text += "📦 STATUS STOK BARANG :\n";
         
         appData.inventaris.forEach(b => { 
-            text += `> ${b.nama}\n`;
-            text += `   Tersedia : ${b.stok}\n`;
-            text += `   Dipinjam : ${b.dipinjam}\n`;
+            text += `> ${b.nama}\n   Tersedia : ${b.stok}\n   Dipinjam : ${b.dipinjam}\n`;
         });
         
         text += "--------------------------\n";
@@ -385,15 +419,11 @@
         const dataPinjam = appData.transaksi.filter(t => t.status === 'Dipinjam');
         if (dataPinjam.length > 0) {
             text += "⚠️ SEDANG DIPINJAM :\n";
-            dataPinjam.forEach(p => {
-                text += `- ${p.warga} (${p.barang}: ${p.jumlah})\n`;
-            });
+            dataPinjam.forEach(p => { text += `- ${p.warga} (${p.barang}: ${p.jumlah})\n`; });
             text += "--------------------------\n";
         }
         
-        text += "Terima kasih.\n";
-        text += "==========================";
-        
+        text += "Terima kasih.\n==========================";
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
 </script>
