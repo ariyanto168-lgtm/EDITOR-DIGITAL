@@ -1,1190 +1,291 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Design Editor V1.29.0 Anti Crash</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<style>
-:root { --primary: #4f46e5; --bg-color: #f1f5f9; --canvas-bg: #e2e8f0; --toolbar-bg: #ffffff; --text-main: #1e293b; --border: #cbd5e1; --success: #10b981; }
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
-body { background: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
-.view-section { display: none; flex: 1; flex-direction: column; padding: 16px; }
-.view-section.active { display: flex; }
-button { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 10px 14px; font-weight: 600; cursor: pointer; transition: .2s; }
-button:active { transform: scale(.95); }
-button:disabled { opacity: .7; cursor: not-allowed; }
-.btn-outline { background: 0 0; color: var(--primary); border: 1px solid var(--primary); }
-.dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; max-width: 800px; margin-inline: auto; }
-.card-menu { background: #fff; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,.05); cursor: pointer; }
-.card-menu .icon { font-size: 2rem; margin-bottom: 8px; display: block; }
-.card { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid var(--border); margin-bottom: 16px; max-width: 800px; margin-inline: auto; width: 100%; }
-#view-editor { padding: 0; display: none; flex-direction: column; height: 100vh; overflow: hidden; background: var(--canvas-bg); position: relative; }
-#view-editor.active { display: flex; }
-.editor-top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--toolbar-bg); padding: 8px 12px; border-bottom: 1px solid var(--border); z-index: 100; }
-.editor-top-actions { display: flex; gap: 6px; align-items: center; }
-.autosave-indicator { font-size: .7rem; color: var(--success); font-weight: 700; opacity: 0; transition: opacity .3s; position: absolute; top: 45px; left: 12px; background: rgba(255,255,255,.9); padding: 4px 8px; border-radius: 4px; z-index: 100; }
-.autosave-indicator.show { opacity: 1; }
-.canvas-wrapper { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding: 20px; position: relative; }
-.canvas { width: 360px; height: 640px; background-color: #fff; position: relative; box-shadow: 0 10px 25px 5px rgba(0,0,0,.2); overflow: hidden; transform-origin: center center; transition: transform 1s ease-out; }
-.canvas-object { position: absolute; user-select: none; padding: 4px; border: 1px dashed transparent; touch-action: none; will-change: transform, left, top; }
-.canvas-object.selected { outline: 2px solid var(--primary); border: 1px dashed rgba(255,255,255,.8); }
-.canvas-object.multi-selected { outline: 2px solid #06b6d4; border: 1px dashed rgba(6,182,212,.8); }
-.canvas-object.locked { outline: 2px solid #ef4444; }
-.resize-handle { position: absolute; width: 10px; height: 10px; background: #fff; border: 2px solid var(--primary); border-radius: 50%; z-index: 1000; display: none; }
-.canvas-object.selected .resize-handle { display: block; }
-.handle-tl { top: -6px; left: -6px; cursor: nwse-resize; }
-.handle-t { top: -6px; left: calc(50% - 5px); cursor: ns-resize; }
-.handle-tr { top: -6px; right: -6px; cursor: nesw-resize; }
-.handle-l { top: calc(50% - 5px); left: -6px; cursor: ew-resize; }
-.handle-r { top: calc(50% - 5px); right: -6px; cursor: ew-resize; }
-.handle-bl { bottom: -6px; left: -6px; cursor: nesw-resize; }
-.handle-b { bottom: -6px; left: calc(50% - 5px); cursor: ns-resize; }
-.handle-br { bottom: -6px; right: -6px; cursor: nwse-resize; }
-.rotate-handle { position: absolute; top: -30px; left: calc(50% - 8px); width: 16px; height: 16px; background: #8b5cf6; border: 2px solid #fff; border-radius: 50%; z-index: 1001; cursor: grab; display: none; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
-.canvas-object.selected .rotate-handle, .canvas-object.selected .rotate-line { display: block; }
-.rotate-line { position: absolute; top: -14px; left: calc(50% - 1px); width: 2px; height: 14px; background: #8b5cf6; display: none; }
-.guide-line { position: absolute; background: #ef4444; z-index: 9999; display: none; pointer-events: none; box-shadow: 0 0 4px rgba(239,68,68,.5); }
-.guide-v { width: 1px; height: 100%; top: 0; left: 180px; }
-.guide-h { width: 100%; height: 1px; left: 0; top: 320px; }
-.floating-action-bar { position: absolute; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.15); display: flex; gap: 4px; padding: 4px; z-index: 1500; border: 1px solid var(--border); transform: translateX(-50%); display: none; }
-.floating-action-bar button { padding: 6px 8px; font-size: .85rem; background: 0 0; color: var(--text-main); border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-.editor-bottom-bar { display: flex; justify-content: space-around; background: var(--toolbar-bg); padding: 8px; border-top: 1px solid var(--border); z-index: 100; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-.bottom-tool { display: flex; flex-direction: column; align-items: center; font-size: .7rem; color: var(--text-muted); background: 0 0; padding: 4px; border: none; cursor: pointer; }
-.bottom-tool.icon { font-size: 1.2rem; margin-bottom: 2px; }
-.bottom-sheet { position: fixed; bottom: -100%; left: 0; width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.1); transition: bottom .3s cubic-bezier(.4,0,.2,1); z-index: 2000; max-height: 80vh; overflow-y: auto; }
-.bottom-sheet.active { bottom: 0; }
-.sheet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 16px; }
-.sheet-close { font-size: 1.5rem; background: 0 0; color: var(--text-main); padding: 0; cursor: pointer; }
-.input-group { margin-bottom: 12px; }
-.input-group label { display: block; font-size: .75rem; font-weight: 600; margin-bottom: 4px; color: var(--text-muted); }
-.input-group input, .input-group select, .input-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: .9rem; }
-.asset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 220px; overflow-y: auto; padding-right: 5px; }
-.asset-item { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; }
-.asset-item img { width: 100%; height: 50px; object-fit: contain; }
-#publicViewerOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 3000; overflow-y: auto; align-items: flex-start; justify-content: center; transition: .3s; }
-.public-card { width: 100%; max-width: 480px; background: #fff; min-height: 100vh; position: relative; overflow: hidden; margin: 0 auto; box-shadow: 0 0 20px rgba(0,0,0,.5); }
-.preview-header { position: sticky; top: 0; left: 0; width: 100%; background: #1e293b; padding: 10px 16px; display: flex; justify-content: center; gap: 8px; z-index: 3100; border-bottom: 1px solid #334155; }
-.preview-header button { background: #334155; color: #fff; padding: 8px 12px; border-radius: 20px; font-size: .75rem; }
-.preview-header button.active { background: var(--primary); }
-.preview-header button.close-btn { background: #ef4444; margin-left: auto; }
-.admin-table { width: 100%; border-collapse: collapse; font-size: .75rem; }
-.admin-table td, .admin-table th { border: 1px solid var(--border); padding: 8px; text-align: left; }
-@keyframes anim-fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes anim-slideUp { from { transform: translateY(80px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes anim-slideDown { from { transform: translateY(-80px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes anim-slideLeft { from { transform: translateX(80px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes anim-slideRight { from { transform: translateX(-80px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes anim-zoomIn { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes anim-bounce { 0%, 100%, 20%, 50%, 80% { transform: translateY(0); } 40% { transform: translateY(-20px); } 60% { transform: translateY(-10px); } }
-.eff-fadeIn { animation: anim-fadeIn 1s ease forwards; }
-.eff-slideUp { animation: anim-slideUp 1s ease forwards; }
-.eff-slideDown { animation: anim-slideDown 1s ease forwards; }
-.eff-slideLeft { animation: anim-slideLeft 1s ease forwards; }
-.eff-slideRight { animation: anim-slideRight 1s ease forwards; }
-.eff-zoomIn { animation: anim-zoomIn 1s ease forwards; }
-.eff-bounce { animation: anim-bounce 2s ease infinite; }
-.countdown-widget { display: flex; justify-content: center; gap: 8px; text-align: center; font-weight: 700; pointer-events: none; }
-.cd-box { display: flex; flex-direction: column; background: rgba(255,255,255,.85); border-radius: 8px; padding: 8px; min-width: 50px; box-shadow: 0 2px 5px rgba(0,0,0,.1); }
-.cd-num { font-size: 1.2rem; line-height: 1; margin-bottom: 2px; }
-.cd-label { font-size: .5rem; text-transform: uppercase; letter-spacing: 1px; color: #64748b; }
-#errorBanner { display: none; background: #ef4444; color: #fff; padding: 10px; text-align: center; font-weight: 700; font-size: .8rem; z-index: 9999; width: 100%; }
-.music-btn { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; background: var(--primary); color: #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,.3); z-index: 3100; cursor: pointer; border: none; animation: spin 4s linear infinite; }
-.music-btn.paused { animation: none; opacity: .7; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventaris Gudang RT</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f6f9; padding-bottom: 90px; }
+        .card-stat { border-radius: 12px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .table-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;}
+        
+        .bottom-navbar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background-color: #ffffff;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.08);
+            display: flex; justify-content: space-around;
+            padding: 12px 0 8px 0; z-index: 1030;
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+        }
+        .nav-item-bottom {
+            text-align: center; color: #6c757d; text-decoration: none; 
+            font-size: 0.75rem; font-weight: 500;
+            display: flex; flex-direction: column; align-items: center; width: 25%;
+            transition: 0.3s;
+        }
+        .nav-item-bottom i { font-size: 1.5rem; margin-bottom: 4px; }
+        .nav-item-bottom:hover, .nav-item-bottom:active { color: #0d6efd; }
+        #loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; text-align: center; padding-top: 30vh; }
+        
+        .list-warga-item { background-color: #ffffff; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .border-left-warning { border-left: 5px solid #ffc107; }
+        .border-left-success { border-left: 5px solid #198754; }
+    </style>
 </head>
 <body>
-<div id="errorBanner">Log Error</div>
-<script>
-window.onerror = function (msg, url, line) {
-    var eb = document.getElementById('errorBanner');
-    if (eb) { 
-        eb.style.display = 'block'; 
-        eb.innerHTML += "<br/>Error JS: " + msg + " (Baris: " + line + ")"; 
-    }
-};
-</script>
 
-<div id="publicViewerOverlay" style="flex-direction: column; align-items: center;">
-    <div id="previewDeviceHeader" class="preview-header" style="display:none; width: 100%;">
-        <button onclick="setDevicePreview('mobile')" id="btnPrevMobile" class="active">HP</button>
-        <button onclick="setDevicePreview('tablet')" id="btnPrevTablet">Tablet</button>
-        <button onclick="setDevicePreview('desktop')" id="btnPrevDesktop">Desktop</button>
-        <button onclick="closePreview()" class="close-btn">X Tutup</button>
+<div id="loader"><div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div><h4 class="mt-3 text-primary fw-bold">Memuat Data...</h4></div>
+
+<nav class="navbar navbar-dark bg-dark mb-4 shadow-sm">
+    <div class="container d-flex justify-content-between">
+        <span class="navbar-brand mb-0 h1 fw-bold"><i class="fas fa-boxes text-warning"></i> INVENTARIS RT</span>
+        <span class="badge bg-secondary">v1.2</span>
     </div>
-    <div class="public-card" id="publicCardContent">Memuat Undangan...</div>
-    <audio id="publicAudioPlayer" loop preload="auto"></audio>
-    <button id="publicMusicBtn" class="music-btn paused" style="display:none;" onclick="togglePublicMusic()">🎵</button>
+</nav>
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-4">
+            <div class="card card-stat bg-primary text-white h-100 text-center p-2">
+                <h6 style="font-size:0.7rem; margin-bottom:2px;">Macam Barang</h6>
+                <h4 class="mb-0 fw-bold" id="dash-macam">0</h4>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="card card-stat bg-success text-white h-100 text-center p-2">
+                <h6 style="font-size:0.7rem; margin-bottom:2px;">Stok Tersedia</h6>
+                <h4 class="mb-0 fw-bold" id="dash-stok">0</h4>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="card card-stat bg-warning text-dark h-100 text-center p-2">
+                <h6 style="font-size:0.7rem; margin-bottom:2px; font-weight:bold;">Jml Dipinjam</h6>
+                <h4 class="mb-0 fw-bold" id="dash-pinjam">0</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="p-3 rounded" style="background-color: #fff8e1; border: 1px solid #ffecb3;">
+                <h6 class="fw-bold text-dark border-bottom border-warning pb-2 mb-3"><i class="fas fa-hand-holding text-warning"></i> Sedang Dipinjam Warga</h6>
+                <div id="dash-pinjam-list"></div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="p-3 rounded" style="background-color: #e8f5e9; border: 1px solid #c8e6c9;">
+                <h6 class="fw-bold text-dark border-bottom border-success pb-2 mb-3"><i class="fas fa-check-circle text-success"></i> Telah Dikembalikan</h6>
+                <div id="dash-kembali-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container" id="section-inventaris">
+        <h5 class="fw-bold mb-3"><i class="fas fa-list text-primary"></i> Data Master Inventaris</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark text-center">
+                    <tr><th class="text-start">Nama Barang</th><th>Tersedia</th><th>Dipinjam</th></tr>
+                </thead>
+                <tbody id="table-barang"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="table-container" id="section-transaksi">
+        <h5 class="fw-bold mb-3"><i class="fas fa-history text-secondary"></i> Riwayat Transaksi Keseluruhan</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle text-nowrap" style="font-size: 0.9rem;">
+                <thead class="table-light">
+                    <tr><th>Tanggal</th><th>Jenis</th><th>Status</th><th>Barang</th><th>Qty</th><th>Warga</th><th>Petugas</th></tr>
+                </thead>
+                <tbody id="table-transaksi"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Teks Update & Powered By -->
+    <div class="text-center mt-5 mb-5 pb-4">
+        <h6 class="text-secondary fw-bold mb-1"><i class="fas fa-bolt text-warning"></i> Powered By Ari GPM</h6>
+        <small class="text-muted">Versi Update Terkini: v1.2</small>
+    </div>
 </div>
 
-<div id="mainAppContainer" style="display: flex; flex-direction: column; flex: 1;">
-    <div id="view-dashboard" class="view-section active">
-        <header style="border-radius: 12px; margin-bottom: 16px; max-width: 800px; margin-inline: auto; width: 100%;">
-            <h1>Design Editor <span style="font-size:0.6rem; background: var(--success); color: white; padding:2px 6px; border-radius: 4px; vertical-align: middle;">V1.29.0 UTUH</span></h1>
-            <span id="userBadge" style="font-size: 0.7rem; color: var(--primary); font-weight:bold;">Memuat ID...</span>
-        </header>
-        <div class="dashboard-grid">
-            <div class="card-menu" onclick="switchView('view-templates-catalog'); loadTemplatesCatalog();"><span class="icon">📄</span><span class="title">Buat Desain</span></div>
-            <div class="card-menu" onclick="switchView('view-projects'); loadUserProjects();"><span class="icon">📁</span><span class="title">Project Saya</span></div>
-            <div class="card-menu" onclick="openSheet('sheet-assets')"><span class="icon">🖼️</span><span class="title">Assets & Bingkai</span></div>
-            <div class="card-menu" onclick="switchView('view-admin'); loadAdminData();"><span class="icon">👥</span><span class="title">RSVP Tamu</span></div>
-        </div>
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items:center; margin-bottom:10px;">
-                <h2 style="margin:0; font-size:1rem;">Status Sistem</h2>
-                <span id="systemStatusBadge" style="font-size:0.7rem; font-weight: bold; color:#f59e0b;">CHECKING...</span>
-            </div>
-            <button id="initBtn" onclick="jalankanInisialisasi()" disabled>Menunggu Booting...</button>
-        </div>
+<nav class="bottom-navbar">
+    <a href="#" class="nav-item-bottom" data-bs-toggle="modal" data-bs-target="#modalBarang"><i class="fas fa-box-open"></i><span>Barang Baru</span></a>
+    <a href="#" class="nav-item-bottom" data-bs-toggle="modal" data-bs-target="#modalTransaksi"><i class="fas fa-exchange-alt"></i><span>Transaksi</span></a>
+    <a href="#section-inventaris" class="nav-item-bottom"><i class="fas fa-list-alt"></i><span>Inventaris</span></a>
+    <a href="#" class="nav-item-bottom" onclick="shareWA()"><i class="fab fa-whatsapp text-success"></i><span>Share WA</span></a>
+</nav>
+
+<!-- Modal Barang -->
+<div class="modal fade" id="modalBarang" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white"><h5 class="modal-title fw-bold">Tambah Master Barang</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <form id="formBarang">
+            <div class="mb-3"><label class="form-label fw-bold">Nama Barang</label><input type="text" class="form-control" id="inpBarangNama" required></div>
+            <div class="mb-4"><label class="form-label fw-bold">Stok Awal</label><input type="number" class="form-control" id="inpBarangStok" value="0" required></div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold py-2">Simpan Master Barang</button>
+        </form>
+      </div>
     </div>
-    <div id="view-templates-catalog" class="view-section" style="max-width: 800px; margin: 0 auto; width: 100%;">
-        <button class="btn-outline" onclick="switchView('view-dashboard')" style="margin-bottom: 16px; width: fit-content;">&lt; Kembali</button>
-        <div class="card">
-            <h2>Pilih Template Desain</h2>
-            <div id="templatesCatalogContainer" style="display:grid; grid-template-columns: 1fr; gap:12px; margin-top: 12px;">Memuat katalog...</div>
-        </div>
-    </div>
-    <div id="view-editor" class="view-section">
-        <div class="editor-top-bar">
-            <button class="btn-icon" onclick="exitEditor()">🔙</button>
-            <div class="editor-top-actions">
-                <button class="btn-icon" onclick="undo()" id="btnUndo" title="Undo" style="opacity:0.5;">↩️</button>
-                <button class="btn-icon" onclick="redo()" id="btnRedo" title="Redo" style="opacity:0.5;">↪️</button>
-                <button class="btn-icon" onclick="exportToPNG()" id="btnExport" title="Unduh PNG" style="color: #8b5cf6;">💾</button>
-                <button class="btn-icon" onclick="showPreview()" style="color: var(--primary);" title="Preview Responsif">👁️</button>
-                <button onclick="saveCurrentProject()" style="background: var(--success); padding: 8px 12px; font-size: 0.8rem;">Save</button>
-            </div>
-        </div>
-        <div id="autoSaveText" class="autosave-indicator">Draf Tersimpan</div>
-        <div class="canvas-wrapper" id="canvasWrapper" onclick="clearSelection(event)">
-            <div class="canvas" id="mainCanvas">
-                <div id="guideV" class="guide-line guide-v"></div>
-                <div id="guideH" class="guide-line guide-h"></div>
-            </div>
-            <div id="floatingActionBar" class="floating-action-bar">
-                <button onclick="openPropertySheet()" title="Edit Sifat">✏️ Edit</button>
-                <button onclick="toggleLockSelected()" id="btnFabLock">🔒</button>
-                <button onclick="toggleHideSelected()" id="btnFabHide">👁️</button>
-                <button onclick="groupSelected()" title="Group Objects">🗂️ Group</button>
-                <button onclick="changeLayer(1)" title="Naikkan Layer">🔼</button>
-                <button onclick="changeLayer(-1)" title="Turunkan Layer">🔽</button>
-                <button onclick="duplicateSelected()" title="Duplikat">📑</button>
-                <button onclick="deleteSelected()" title="Hapus" style="color:red;">🗑️</button>
-            </div>
-        </div>
-        <div class="editor-bottom-bar">
-            <button class="bottom-tool" onclick="openSheet('sheet-add')"><span class="icon">➕</span>Tambah</button>
-            <button class="bottom-tool" onclick="openSheet('sheet-assets')"><span class="icon">🧩</span>Assets</button>
-            <button class="bottom-tool" onclick="openSheet('sheet-data')"><span class="icon">📝</span>Data</button>
-            <button class="bottom-tool" onclick="openSheet('sheet-bg')"><span class="icon">🎨</span>Latar</button>
-            <button class="bottom-tool" onclick="publishCurrentProject()"><span class="icon">🚀</span>Publish</button>
-        </div>
-        
-        <!-- Bottom Sheets -->
-        <div id="sheet-add" class="bottom-sheet">
-            <div class="sheet-header"><h3>Tambah Objek</h3><button class="sheet-close" onclick="closeSheets()">x</button></div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="btn-outline" onclick="addObject('text'); closeSheets();">Teks</button>
-                <button class="btn-outline" onclick="addObject('image'); closeSheets();">Gambar / URL</button>
-                <button class="btn-outline" onclick="addObject('button'); closeSheets();">Tombol Link</button>
-                <button class="btn-outline" onclick="addObject('countdown'); closeSheets();">Countdown</button>
-                <button class="btn-outline" onclick="addObject('shape'); closeSheets();">Kotak Latar</button>
-                <button class="btn-outline" onclick="addObject('video'); closeSheets();">Video MP4</button>
-                <button class="btn-outline" onclick="addObject('map'); closeSheets();">Google Map</button>
-                <button class="btn-outline" onclick="addObject('qr'); closeSheets();">QR Code</button>
-                <button class="btn-outline" onclick="addObject('gift'); closeSheets();">Angpao / Gift</button>
-                <button class="btn-outline" onclick="addObject('gallery'); closeSheets();">Galeri Foto</button>
-            </div>
-        </div>
-        
-        <div id="sheet-assets" class="bottom-sheet">
-            <div class="sheet-header"><h3>Pustaka Stiker & Bingkai</h3><button class="sheet-close" onclick="closeSheets()">x</button></div>
-            <div class="asset-grid">
-                <div class="asset-item" onclick="insertAsset('https://cdn-icons-png.flaticon.com/512/833/833472.png', 'image')"><img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/833/833472.png" alt="Love"><br><span style="font-size:0.6rem;">Love</span></div>
-                <div class="asset-item" onclick="insertAsset('https://cdn-icons-png.flaticon.com/512/711/711293.png', 'image')"><img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/711/711293.png" alt="Rings"><br><span style="font-size:0.6rem;">Cincin</span></div>
-                <div class="asset-item" onclick="insertAsset('https://cdn-icons-png.flaticon.com/512/3069/3069186.png', 'image')"><img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/3069/3069186.png" alt="Border"><br><span style="font-size:0.6rem;">Bingkai Klasik</span></div>
-                <div class="asset-item" onclick="insertAsset('https://cdn-icons-png.flaticon.com/512/1076/1076928.png', 'image')"><img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/1076/1076928.png" alt="Frame"><br><span style="font-size:0.6rem;">Bingkai Emas</span></div>
-                <div class="asset-item" onclick="insertAsset('https://cdn-icons-png.flaticon.com/512/2924/2924082.png', 'image')"><img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/2924/2924082.png" alt="Corner"><br><span style="font-size:0.6rem;">Hiasan Sudut</span></div>
-                <div class="asset-item" onclick="insertAsset('https://cdn-icons-png.flaticon.com/512/2769/2769213.png', 'image')"><img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/2769/2769213.png" alt="Sparkle"><br><span style="font-size:0.6rem;">Sparkle</span></div>
-            </div>
-        </div>
-        
-        <div id="sheet-data" class="bottom-sheet">
-            <div class="sheet-header"><h3>Data Pengantin</h3><button class="sheet-close" onclick="closeSheets()">x</button></div>
-            <div class="input-group"><label>Nama Pria</label><input type="text" id="invGroom" oninput="updateInvitationData('groomName', this.value)"></div>
-            <div class="input-group"><label>Nama Wanita</label><input type="text" id="invBride" oninput="updateInvitationData('brideName', this.value)"></div>
-            <div class="input-group"><label>Tanggal Acara</label><input type="datetime-local" id="invDate" oninput="updateInvitationData('eventDate', this.value)"></div>
-            <div class="input-group"><label>Musik MP3 (URL)</label><input type="text" id="invMusic" placeholder="https://contoh.com/lagu.mp3" oninput="updateInvitationData('musicUrl', this.value)"></div>
-        </div>
-        
-        <div id="sheet-bg" class="bottom-sheet">
-            <div class="sheet-header"><h3>Background Builder</h3><button class="sheet-close" onclick="closeSheets()">x</button></div>
-            <div class="input-group"><label>Warna Solid Utama</label><input type="color" id="bgColPicker" oninput="updateBackground('color', this.value)" style="height: 45px;"></div>
-            <div style="display: flex; gap:10px;">
-                <div class="input-group" style="flex:1;"><label>Gradient 1</label><input type="color" id="bgGrad1" oninput="updateBackgroundGradient()" style="height: 45px;" value="#ffffff"></div>
-                <div class="input-group" style="flex:1;"><label>Gradient 2</label><input type="color" id="bgGrad2" oninput="updateBackgroundGradient()" style="height: 45px;" value="#e0e7ff"></div>
-            </div>
-            <div class="input-group"><label>URL Gambar Latar</label><input type="text" id="bgImgInput" placeholder="https://contoh.com/bg.jpg" oninput="updateBackground('image', this.value)"></div>
-        </div>
-        
-        <div id="sheet-property" class="bottom-sheet">
-            <div class="sheet-header"><h3>Edit Sifat Objek</h3><button class="sheet-close" onclick="closeSheets()">x</button></div>
-            <div id="propTextContainer" class="input-group"><label>Isi Teks / Info</label><input type="text" id="propText" oninput="updateSelectedObjectProp('content', this.value)"></div>
-            <div id="propLinkContainer" class="input-group" style="display:none;"><label>URL / Link (Koma untuk Galeri)</label><input type="text" id="propLink" oninput="updateSelectedObjectProp('url', this.value)"></div>
-            <div id="propImgContainer" class="input-group" style="display:none;"><label>URL Media Baru</label><input type="text" id="propImage" oninput="updateSelectedObjectProp('url', this.value)"></div>
-            <div id="propFilterContainer" class="input-group" style="display:none;">
-                <label>Filter Gambar</label>
-                <select id="propFilter" onchange="updateSelectedObjectProp('filter', this.value)">
-                    <option value="none">Normal</option><option value="grayscale(100%)">Grayscale</option><option value="sepia(100%)">Sepia</option><option value="contrast(150%)">Kontras Tinggi</option>
+  </div>
+</div>
+
+<!-- Modal Transaksi -->
+<div class="modal fade" id="modalTransaksi" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white"><h5 class="modal-title fw-bold">Catat Transaksi</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <form id="formTransaksi">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Kategori Transaksi</label>
+                <select class="form-select border-dark" id="inpTransJenis" required>
+                    <option value="Barang Di pinjam" selected>Barang Di pinjam</option>
+                    <option value="Barang kembali">Barang kembali</option>
+                    <option value="Barang rusak">Barang rusak</option>
+                    <option value="Barang Sumbangan">Barang Sumbangan</option>
                 </select>
             </div>
-            <div style="display: flex; gap:10px;">
-                <div id="propColorContainer" class="input-group" style="flex:1;"><label>Warna</label><input type="color" id="propColor" oninput="updateSelectedObjectProp('color', this.value)" style="height: 45px;"></div>
-                <div id="propSizeContainer" class="input-group" style="flex:1;"><label>Ukuran Font</label><input type="number" id="propSize" oninput="updateSelectedObjectProp('size', parseInt(this.value))"></div>
+            <div class="mb-3"><label class="form-label fw-bold">Pilih Barang</label><select class="form-select" id="inpTransBarang" required></select></div>
+            <div class="mb-3"><label class="form-label fw-bold">Jumlah (Qty)</label><input type="number" class="form-control" id="inpTransJumlah" min="1" value="1" required></div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold text-primary">Data Warga (Nama/Keterangan)</label>
+                <input type="text" class="form-control border-primary" id="inpTransWarga" placeholder="Contoh: Bpk. Budi RT 01" required>
             </div>
-            <div style="display: flex; gap:10px;">
-                <div class="input-group" style="flex:1;"><label>Lebar (px)</label><input type="number" id="propWidth" oninput="updateSelectedObjectProp('width', parseInt(this.value))"></div>
-                <div class="input-group" style="flex:1;"><label>Tinggi (px)</label><input type="number" id="propHeight" oninput="updateSelectedObjectProp('height', parseInt(this.value))"></div>
-            </div>
-            <div style="display: flex; gap:10px;">
-                <div class="input-group" style="flex:1;"><label>Opacity (0-1)</label><input type="number" step="0.1" min="0" max="1" id="propOpacity" oninput="updateSelectedObjectProp('opacity', parseFloat(this.value))"></div>
-                <div class="input-group" style="flex:1;"><label>Rotasi (°)</label><input type="number" id="propRotation" oninput="updateSelectedObjectProp('rotation', parseInt(this.value))"></div>
-            </div>
-            <div class="input-group" style="display: flex; gap:10px; align-items: center;">
-                <label style="display: flex; align-items: center; gap:6px; cursor:pointer;"><input type="checkbox" id="propLockRatio" onchange="toggleLockRatio(this.checked)"> Kunci Rasio (Lock Ratio)</label>
-            </div>
-            <div class="input-group" style="display: flex; gap:10px;">
-                <div id="propFontContainer" style="flex:1;"><label>Jenis Font</label>
-                    <select id="propFont" onchange="updateSelectedObjectProp('fontFamily', this.value)">
-                        <option value="sans-serif">Modern</option><option value="serif">Klasik</option><option value="'Brush Script MT', cursive">Tulisan Tangan</option>
-                    </select>
-                </div>
-                <div style="flex:1;"><label>Efek Animasi</label>
-                    <select id="propAnimation" onchange="updateSelectedObjectProp('animation', this.value)">
-                        <option value="none">Tidak Ada</option><option value="eff-fadeIn">Fade In</option><option value="eff-slideUp">Slide Up</option><option value="eff-slideDown">Slide Down</option><option value="eff-slideLeft">Slide Left</option><option value="eff-slideRight">Slide Right</option><option value="eff-zoomIn">Zoom In</option><option value="eff-bounce">Bouncing</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+            
+            <div class="mb-4"><label class="form-label fw-bold">Nama Petugas Pengelola</label><input type="text" class="form-control" id="inpTransPetugas" required></div>
+            <button type="submit" class="btn btn-dark w-100 fw-bold py-2">Simpan Transaksi</button>
+        </form>
+      </div>
     </div>
-    <div id="view-projects" class="view-section" style="max-width: 800px; margin: 0 auto; width: 100%;">
-        <button class="btn-outline" onclick="switchView('view-dashboard')" style="margin-bottom: 16px; width: fit-content;">&lt; Dashboard</button>
-        <div class="card"><h2>Project Disimpan</h2><div id="projectListContainer">Memuat...</div></div>
-    </div>
-    <div id="view-admin" class="view-section" style="max-width: 800px; margin: 0 auto; width: 100%;">
-        <button class="btn-outline" onclick="switchView('view-dashboard')" style="margin-bottom: 16px; width: fit-content;">&lt; Dashboard</button>
-        <div class="card">
-            <h2>Buku Tamu</h2><button onclick="loadAdminData()" style="margin-bottom: 10px;">Muat Ulang</button>
-            <div style="overflow-x: auto;"><table class="admin-table"><thead><tr><th>ID</th><th>Nama</th><th>Hadir</th><th>Jml</th><th>Pesan</th></tr></thead><tbody id="adminRsvpTableBody"></tbody></table></div>
-        </div>
-    </div>
+  </div>
 </div>
 
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const urlParams = new URLSearchParams(window.location.search);
-const serverPublishId = urlParams.get('id') || "";
-let currentUserId = "USER_" + Math.random().toString(36).substring(2, 9).toUpperCase();
-let currentProject = { projectID: "", version: "1.29.0", elements: [], invitation: {} };
-let selectedElementId = null;
-let multiSelectedIds = [];
-let historyStack = [];
-let historyStep = -1;
-let isSavingHistory = false;
-let autoSaveTimer = null;
+    // ==========================================
+    // URL WEB APP GOOGLE APPS SCRIPT ANDA
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxYhlZjTVfkYnWl5nIM_aJeqlxeqywO_-2ZY9e_Dho9BaVEss1OOXEUfJAYew2u8xDE2w/exec";
+    // ==========================================
 
-const CANVAS_W = 360;
-const CANVAS_H = 640;
-const SNAP_THRESHOLD = 15;
-let hasBooted = false;
+    let appData = null;
+    document.addEventListener("DOMContentLoaded", loadData);
 
-function bootApplication() {
-    if (hasBooted) return; 
-    hasBooted = true;
-    try {
-        const ub = document.getElementById('userBadge'); 
-        if (ub) { ub.innerText = currentUserId; }
-        if (serverPublishId && serverPublishId.trim() !== "") { 
-            loadPublicInvitation(serverPublishId); return; 
-        }
-        const localDraftStr = localStorage.getItem('DE_LOCAL_DRAFT');
-        if (localDraftStr && confirm("Pulihkan draf terakhir?")) { 
-            try { 
-                currentProject = JSON.parse(localDraftStr);
-                migrateData(currentProject); 
-                startEditor(); 
-            } catch(e) {} 
-        }
-        jalankanInisialisasi();
-    } catch(e) { 
-        const eb = document.getElementById('errorBanner'); 
-        if (eb) { eb.style.display = 'block'; eb.innerHTML = "Error Boot: " + e.message; } 
-    }
-}
+    function showLoader() { document.getElementById('loader').style.display = 'block'; }
+    function hideLoader() { document.getElementById('loader').style.display = 'none'; }
 
-document.addEventListener('DOMContentLoaded', bootApplication);
-window.onload = bootApplication;
-
-function jalankanInisialisasi() {
-    const btn = document.getElementById('initBtn'); 
-    const statusBadge = document.getElementById('systemStatusBadge');
-    if (btn) { btn.innerText = "Cek Koneksi DB..."; btn.disabled = true; }
-    
-    if (typeof google === 'undefined' || !google.script) {
-        if (statusBadge) { statusBadge.innerText = "MODE OFFLINE (SIMULATOR)"; statusBadge.style.color = "#f59e0b"; }
-        if (btn) btn.innerText = "Storage Lokal Aktif";
-        return;
-    }
-    try {
-        google.script.run.withSuccessHandler(function(res) {
-            if (res && res.success) {
-                if (statusBadge) { statusBadge.innerText = "TERHUBUNG (GAS ONLINE)"; statusBadge.style.color = "var(--success)"; }
-                if (btn) btn.innerText = "Database Terhubung";
-            } else { 
-                if (statusBadge) { statusBadge.innerText = "ERROR DB"; statusBadge.style.color = "red"; } 
-                if (btn) { btn.innerText = "Gagal"; btn.disabled = false; } 
-            }
-        }).withFailureHandler(function(err) {
-            if (statusBadge) { statusBadge.innerText = "KONEKSI GAGAL"; statusBadge.style.color = "red"; }
-            if (btn) { btn.innerText = "Coba Lagi"; btn.disabled = false; }
-        }).initializeSystem();
-    } catch(e) {}
-}
-
-function resizeCanvasView() {
-    const wrapper = document.getElementById('canvasWrapper');
-    const canvas = document.getElementById('mainCanvas');
-    if (!wrapper || !canvas || document.getElementById('view-editor').style.display === 'none') return;
-    const scale = Math.min(1, (wrapper.clientWidth - 40) / CANVAS_W, (wrapper.clientHeight - 40) / CANVAS_H);
-    canvas.style.transform = "scale(" + scale + ")";
-}
-
-window.addEventListener('resize', resizeCanvasView);
-
-function switchView(viewId) {
-    document.querySelectorAll('.view-section').forEach(function(el) { el.classList.remove('active'); });
-    document.getElementById(viewId).classList.add('active'); 
-    if (viewId === 'view-editor') { setTimeout(resizeCanvasView, 100); } 
-}
-
-function exitEditor() { 
-    if (confirm("Keluar dari editor?")) { switchView('view-dashboard'); } 
-}
-
-function saveToHistory() {
-    if (isSavingHistory) return; 
-    historyStep++; 
-    historyStack = historyStack.slice(0, historyStep);
-    historyStack.push(JSON.stringify(currentProject.elements));
-    if (historyStack.length > 40) { historyStack.shift(); historyStep--; }
-    document.getElementById('btnUndo').style.opacity = historyStep > 0 ? '1' : '0.5';
-    document.getElementById('btnRedo').style.opacity = historyStep < historyStack.length - 1 ? '1' : '0.5';
-    triggerAutoSave();
-}
-
-function undo() { 
-    if (historyStep > 0) { 
-        isSavingHistory = true; 
-        historyStep--; 
-        currentProject.elements = JSON.parse(historyStack[historyStep]); 
-        selectedElementId = null; multiSelectedIds = []; 
-        renderCanvas(); 
-        isSavingHistory = false; 
-    } 
-}
-
-function redo() { 
-    if (historyStep < historyStack.length - 1) { 
-        isSavingHistory = true; 
-        historyStep++; 
-        currentProject.elements = JSON.parse(historyStack[historyStep]); 
-        selectedElementId = null; multiSelectedIds = []; 
-        renderCanvas(); 
-        isSavingHistory = false; 
-    } 
-}
-
-function triggerAutoSave() {
-    if (!currentProject.projectID) return;
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(function() { 
+    async function loadData() {
+        if(!GAS_URL || GAS_URL === "URL_GAS_ANDA_DISINI") return alert("Harap isi GAS_URL di script HTML!");
+        showLoader();
         try {
-            localStorage.setItem('DE_LOCAL_DRAFT', JSON.stringify(currentProject)); 
-            const ind = document.getElementById('autoSaveText'); 
-            if (ind) {
-                ind.classList.add('show'); 
-                setTimeout(function() { ind.classList.remove('show'); }, 1500); 
-            } 
-        } catch(e) {} 
-    }, 500);
-}
-
-function migrateData(project) {
-    if (!project.elements) project.elements = [];
-    project.elements.forEach(function(el, i) {
-        if (el.size === undefined) el.size = 24;
-        if (el.width === undefined) el.width = el.type === 'shape' ? 120 : (el.type === 'text' ? 150 : (el.type === 'map' ? 240 : (el.type === 'gift' ? 220 : (el.type === 'gallery' ? 260 : 100))));
-        if (el.height === undefined) el.height = el.type === 'shape' ? 60 : (el.type === 'text' ? 40 : (el.type === 'map' ? 140 : (el.type === 'gift' ? 120 : (el.type === 'gallery' ? 180 : 100))));
-        if (el.rotation === undefined) el.rotation = 0; 
-        if (el.opacity === undefined) el.opacity = 1; 
-        if (el.zIndex === undefined) el.zIndex = i + 1;
-        if (el.visible === undefined) el.visible = true; 
-        if (el.locked === undefined) el.locked = false; 
-        if (el.lockRatio === undefined) el.lockRatio = false;
-        if (el.filter === undefined) el.filter = 'none'; 
-        if (el.animation === undefined) el.animation = 'none';
-    }); 
-    project.version = "1.29.0";
-}
-
-function openEditorWithTemplate(t) {
-    let config = typeof t.configJSON === 'string' ? JSON.parse(t.configJSON) : t.configJSON;
-    currentProject = { 
-        projectID: 'PROJ_' + Math.random().toString(36).substring(2, 8).toUpperCase(), 
-        userId: currentUserId, 
-        version: "1.29.0", 
-        invitation: config.invitation || {}, 
-        elements: config.elements || [] 
-    };
-    migrateData(currentProject); 
-    startEditor();
-}
-
-function startEditor() {
-    historyStack = []; historyStep = -1; saveToHistory();
-    const inv = currentProject.invitation || {};
-    document.getElementById('invGroom').value = inv.groomName || ''; 
-    document.getElementById('invBride').value = inv.brideName || ''; 
-    document.getElementById('invDate').value = inv.eventDate || '';
-    document.getElementById('invMusic').value = inv.musicUrl || '';
-    document.getElementById('bgColPicker').value = inv.bgColor || '#ffffff'; 
-    document.getElementById('bgImgInput').value = inv.bgImage || '';
-    selectedElementId = null; multiSelectedIds = [];
-    switchView('view-editor'); renderCanvas();
-}
-
-function updateInvitationData(key, val) {
-    currentProject.invitation[key] = val; renderCanvas(); triggerAutoSave(); 
-}
-
-function updateBackground(type, val) { 
-    if (type === 'color') {
-        currentProject.invitation.bgColor = val;
-        currentProject.invitation.bgGradient = ''; 
-    } 
-    if (type === 'image') {
-        currentProject.invitation.bgImage = val; 
+            const response = await fetch(GAS_URL + "?action=get_all");
+            const result = await response.json();
+            if(result.status === "success") { appData = result; renderDashboard(); renderBarang(); renderTransaksi(); } 
+            else alert("Error: " + result.message);
+        } catch(e) { alert("Gagal memuat database. Pastikan link Apps Script valid dan memiliki izin."); }
+        hideLoader();
     }
-    renderCanvas(); triggerAutoSave(); 
-}
 
-function updateBackgroundGradient() { 
-    const grad1 = document.getElementById('bgGrad1').value; 
-    const grad2 = document.getElementById('bgGrad2').value;
-    currentProject.invitation.bgGradient = "linear-gradient(135deg, " + grad1 + ", " + grad2 + ")"; 
-    currentProject.invitation.bgColor = '';
-    renderCanvas(); triggerAutoSave(); 
-}
-
-function getCountdownHTML(color) { 
-    return '<div class="countdown-widget" style="color:' + color + ';"><div class="cd-box"><span class="cd-num">00</span><span class="cd-label">Hari</span></div><div class="cd-box"><span class="cd-num">00</span><span class="cd-label">Jam</span></div><div class="cd-box"><span class="cd-num">00</span><span class="cd-label">Mnt</span></div><div class="cd-box"><span class="cd-num">00</span><span class="cd-label">Dtk</span></div></div>'; 
-}
-
-function renderCanvas() {
-    const canvas = document.getElementById('mainCanvas');
-    const gV = document.getElementById('guideV'); 
-    const gH = document.getElementById('guideH');
-    canvas.innerHTML = ''; 
-    canvas.appendChild(gV); canvas.appendChild(gH);
-    
-    const inv = currentProject.invitation || {};
-    if (inv.bgGradient && inv.bgGradient.trim() !== '') {
-        canvas.style.backgroundImage = inv.bgGradient; 
-    } else if (inv.bgImage && inv.bgImage.trim() !== '') { 
-        canvas.style.backgroundImage = "url('" + inv.bgImage + "')"; 
-        canvas.style.backgroundSize = 'cover';
-        canvas.style.backgroundPosition = 'center'; 
-    } else {
-        canvas.style.backgroundImage = 'none'; 
-        canvas.style.backgroundColor = inv.bgColor || '#ffffff'; 
-    }
-    
-    const staticBase = document.createElement('div');
-    staticBase.style.position = 'absolute'; 
-    staticBase.style.width = '100%'; 
-    staticBase.style.height = '100%'; 
-    staticBase.style.zIndex = '0';
-    let dateStr = inv.eventDate ? new Date(inv.eventDate).toLocaleDateString('id-ID') : 'Tanggal Belum Diatur';
-    
-    staticBase.innerHTML = '<div style="padding-top: 50px; pointer-events: none; text-align:center;"><p style="font-size:0.75rem; color: #475569; letter-spacing:2px;">The Wedding of</p><h2 style="font-size:2rem; color:var(--primary); margin:10px 0; font-family:serif;">' + (inv.groomName || 'Pria') + ' & ' + (inv.brideName || 'Wanita') + '</h2><p style="font-size:0.85rem; font-weight: bold;">' + dateStr + '</p></div>';
-    canvas.appendChild(staticBase);
-    
-    let sortedElements = [...currentProject.elements].sort(function(a,b) { return (a.zIndex || 1) - (b.zIndex || 1); });
-    sortedElements.forEach(function(el) {
-        if (el.visible === false) return;
-        
-        const div = document.createElement('div'); 
-        div.id = el.id;
-        let cls = 'canvas-object'; 
-        if (el.id === selectedElementId) cls += ' selected'; 
-        if (multiSelectedIds.includes(el.id) && el.id !== selectedElementId) cls += ' multi-selected'; 
-        if (el.locked) cls += ' locked'; 
-        div.className = cls;
-        div.style.left = el.x + 'px'; 
-        div.style.top = el.y + 'px'; 
-        div.style.width = el.width + 'px'; 
-        div.style.height = el.height + 'px'; 
-        div.style.zIndex = el.zIndex || 1; 
-        div.style.transform = "rotate(" + (el.rotation || 0) + "deg)"; 
-        div.style.opacity = el.opacity !== undefined ? el.opacity : 1;
-        
-        if (el.type === 'text') { 
-            div.innerText = el.content;
-            div.style.fontSize = el.size + 'px'; 
-            div.style.color = el.color || '#1e293b'; 
-            div.style.fontFamily = el.fontFamily || 'sans-serif';
-            div.style.fontWeight = 'bold'; 
-            div.style.whiteSpace = 'nowrap'; 
-        } else if (el.type === 'shape') {
-            div.style.backgroundColor = el.color || 'var(--primary)';
-            div.style.borderRadius = '8px'; 
-        } else if (el.type === 'image') { 
-            let fs = (el.filter && el.filter !== 'none') ? "filter:" + el.filter + ";" : '';
-            div.innerHTML = '<img src="' + el.url + '" crossorigin="anonymous" style="width: 100%; height:100%; object-fit:contain; ' + fs + ' pointer-events:none;" draggable="false"/>'; 
-        } else if (el.type === 'video') { 
-            div.innerHTML = '<video src="' + el.url + '" autoplay loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; pointer-events: none; border-radius: 8px;"></video>'; 
-        } else if (el.type === 'button') { 
-            div.innerHTML = '<div style="width:100%; height: 100%; display: flex; align-items:center; justify-content: center; background-color:' + el.color + '; color: white; border-radius: 20px; font-weight:bold; box-shadow:0 4px 6px rgba(0,0,0,0.15); pointer-events: none; white-space: nowrap; text-align:center;">' + el.content + '</div>'; 
-        } else if (el.type === 'countdown') { 
-            div.innerHTML = getCountdownHTML(el.color); 
-        } else if (el.type === 'map') { 
-            div.innerHTML = '<div style="width: 100%; height: 100%; background:#e2e8f0; border-radius:8px; display: flex; flex-direction:column; align-items:center; justify-content: center; border:2px solid var(--border); pointer-events: none; text-align:center; padding: 8px;"><span style="font-size:1.5rem;">📍</span><strong style="font-size:0.75rem; margin-top:4px;">Google Map Location</strong><span style="font-size:0.6rem; color:#64748b;">' + (el.content || 'Gedung Acara') + '</span></div>'; 
-        } else if (el.type === 'qr') { 
-            let qrImgUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(el.url || 'https://example.com'); 
-            div.innerHTML = '<div style="width:100%; height: 100%; background: white; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; border:1px solid var(--border); pointer-events: none; padding: 4px;"><img src="' + qrImgUrl + '" style="width:80%; height:80%; object-fit:contain;"/><span style="font-size:0.55rem; font-weight: bold;">Scan QR</span></div>'; 
-        } else if (el.type === 'gift') { 
-            div.innerHTML = '<div style="width: 100%; height: 100%; background: linear-gradient(135deg, #f8fafc, #e2e8f0); border-radius: 8px; border:2px dashed var(--primary); display: flex; flex-direction:column; align-items: center; justify-content: center; pointer-events:none; text-align:center; padding: 8px;"><span style="font-size:1.5rem;">🎁</span><strong style="font-size:0.75rem; color:var(--primary);">Digital Gift / Angpao</strong><span style="font-size:0.6rem; color: #334155; margin-top:2px;">' + (el.content || 'BCA 123456789 a.n Pengantin') + '</span></div>'; 
-        } else if (el.type === 'gallery') { 
-            let urls = (el.url || "https://cdn-icons-png.flaticon.com/512/833/833472.png,https://cdn-icons-png.flaticon.com/512/2924/2924082.png").split(','); 
-            let gridHTML = urls.slice(0,4).map(function(u) { 
-                return '<div style="background:#f1f5f9; border-radius: 4px; overflow:hidden; height: 100%;"><img src="' + u.trim() + '" style="width:100%; height:100%; object-fit: cover;"/></div>';
-            }).join(''); 
-            div.innerHTML = '<div style="width:100%; height:100%; background:#ffffff; border-radius: 8px; padding: 4px; display:grid; grid-template-columns: repeat(2, 1fr); gap:4px; border: 1px solid var(--border); pointer-events: none;">' + gridHTML + '</div>'; 
-        }
-        
-        if (el.id === selectedElementId && !el.locked) {
-            div.innerHTML += '<div class="rotate-line"></div><div class="rotate-handle" onpointerdown="startRotate(event, \'' + el.id + '\')" title="Putar"></div><div class="resize-handle handle-tl" onpointerdown="startResize(event, \'' + el.id + '\', \'tl\')"></div><div class="resize-handle handle-t" onpointerdown="startResize(event, \'' + el.id + '\', \'t\')"></div><div class="resize-handle handle-tr" onpointerdown="startResize(event, \'' + el.id + '\', \'tr\')"></div><div class="resize-handle handle-l" onpointerdown="startResize(event, \'' + el.id + '\', \'l\')"></div><div class="resize-handle handle-r" onpointerdown="startResize(event, \'' + el.id + '\', \'r\')"></div><div class="resize-handle handle-bl" onpointerdown="startResize(event, \'' + el.id + '\', \'bl\')"></div><div class="resize-handle handle-b" onpointerdown="startResize(event, \'' + el.id + '\', \'b\')"></div><div class="resize-handle handle-br" onpointerdown="startResize(event, \'' + el.id + '\', \'br\')"></div>';
-        }
-        
-        div.onpointerdown = function(e) { startDrag(e, el.id); }; 
-        canvas.appendChild(div);
-    }); 
-    updateFloatingActionBar();
-}
-
-let startX = 0, startY = 0, isDragging = false, dragReqAnimationFrame = null;
-
-function getScaleOffset() { 
-    const w = document.getElementById('canvasWrapper'); 
-    return w ? Math.min(1, (w.clientWidth - 40) / CANVAS_W, (w.clientHeight - 40) / CANVAS_H) : 1; 
-}
-
-function clearSelection(e) { 
-    if (e.target.id === 'mainCanvas' || e.target.id === 'canvasWrapper') { 
-        selectedElementId = null; multiSelectedIds = []; renderCanvas(); closeSheets(); 
-    } 
-}
-
-function startDrag(e, id) { 
-    e.stopPropagation(); 
-    const el = currentProject.elements.find(function(i) { return i.id === id; }); 
-    if (!el || el.locked) { selectedElementId = id; renderCanvas(); return; }
-    
-    if (e.ctrlKey || e.shiftKey) { 
-        if (!multiSelectedIds.includes(id)) multiSelectedIds.push(id); 
-        selectedElementId = id;  
-    } else { 
-        if (!multiSelectedIds.includes(id)) multiSelectedIds = [id];
-        selectedElementId = id; 
-    } 
-    
-    renderCanvas(); 
-    isDragging = true; 
-    const scale = getScaleOffset(); 
-    const canvasRect = document.getElementById('mainCanvas').getBoundingClientRect(); 
-    startX = (e.clientX - canvasRect.left) / scale - el.x; 
-    startY = (e.clientY - canvasRect.top) / scale - el.y; 
-    window.onpointermove = onDrag;
-    window.onpointerup = stopDrag; 
-}
-
-function onDrag(e) { 
-    if (!isDragging) return; 
-    const el = currentProject.elements.find(function(i) { return i.id === selectedElementId; }); 
-    const scale = getScaleOffset(); 
-    const canvasRect = document.getElementById('mainCanvas').getBoundingClientRect(); 
-    if (el) { 
-        let newX = (e.clientX - canvasRect.left) / scale - startX; 
-        let newY = (e.clientY - canvasRect.top) / scale - startY; 
-        let w = el.width || 100; 
-        let h = el.height || 40; 
-        newX = Math.max(-(w/2), Math.min(newX, CANVAS_W-(w/2))); 
-        newY = Math.max(-(h/2), Math.min(newY, CANVAS_H-(h/2))); 
-        
-        let gV = document.getElementById('guideV'), gH = document.getElementById('guideH'); 
-        let showGV = false, showGH = false;
-        
-        if (Math.abs((newX+(w/2)) - (CANVAS_W/2)) < SNAP_THRESHOLD) { newX = (CANVAS_W/2)-(w/2); showGV = true; } 
-        if (Math.abs((newY+(h/2)) - (CANVAS_H/2)) < SNAP_THRESHOLD) { newY = (CANVAS_H/2)-(h/2); showGH = true; } 
-        
-        let deltaX = newX - el.x; 
-        let deltaY = newY - el.y; 
-        
-        if (multiSelectedIds.length > 1 && multiSelectedIds.includes(selectedElementId)) {
-            multiSelectedIds.forEach(function(mId) { 
-                if (mId !== selectedElementId) { 
-                    let mEl = currentProject.elements.find(function(i) { return i.id === mId; });
-                    if (mEl && !mEl.locked) { mEl.x += deltaX; mEl.y += deltaY; } 
-                } 
-            }); 
-        } else if (el.groupId) { 
-            currentProject.elements.forEach(function(gEl) {
-                if (gEl.groupId === el.groupId && gEl.id !== el.id && !gEl.locked) { gEl.x += deltaX; gEl.y += deltaY; } 
-            }); 
-        } 
-        
-        el.x = newX; el.y = newY; 
-        if (dragReqAnimationFrame) cancelAnimationFrame(dragReqAnimationFrame);
-        dragReqAnimationFrame = requestAnimationFrame(function() {
-            renderCanvas(); 
-            gV.style.display = showGV ? 'block' : 'none';
-            gH.style.display = showGH ? 'block' : 'none'; 
-            updateFloatingActionBar();
-        }); 
-    } 
-}
-
-function stopDrag() { 
-    if (isDragging) { 
-        isDragging = false;
-        if (dragReqAnimationFrame) cancelAnimationFrame(dragReqAnimationFrame);
-        window.onpointermove = null; window.onpointerup = null;
-        document.getElementById('guideV').style.display = 'none';
-        document.getElementById('guideH').style.display = 'none';
-        saveToHistory(); 
-    } 
-}
-
-let resizingData = null;
-
-function startResize(e, id, handleType) { 
-    e.stopPropagation();
-    const el = currentProject.elements.find(function(i) { return i.id === id; }); 
-    if (!el || el.locked) return; 
-    resizingData = { id: id, handle: handleType, startX: e.clientX, startY: e.clientY, origX: el.x, origY: el.y, origWidth: el.width, origHeight: el.height, origSize: el.size || 24, ratio: el.width / el.height }; 
-    window.onpointermove = onResize;
-    window.onpointerup = stopResize; 
-}
-
-function onResize(e) { 
-    if (!resizingData) return; 
-    const el = currentProject.elements.find(function(i) { return i.id === resizingData.id; }); 
-    const dx = e.clientX - resizingData.startX; 
-    const dy = e.clientY - resizingData.startY; 
-    const scale = getScaleOffset();
-    let w = resizingData.origWidth, h = resizingData.origHeight, x = resizingData.origX, y = resizingData.origY; 
-    const handle = resizingData.handle; 
-    
-    if (handle.includes('r')) w = Math.max(20, resizingData.origWidth + (dx / scale)); 
-    if (handle.includes('b')) h = Math.max(20, resizingData.origHeight + (dy / scale)); 
-    if (handle.includes('l')) { 
-        let diff = (dx / scale); 
-        if (resizingData.origWidth - diff > 20) { w = resizingData.origWidth - diff; x = resizingData.origX + diff; } 
-    } 
-    if (handle.includes('t')) {
-        let diff = (dy / scale); 
-        if (resizingData.origHeight - diff > 20) { h = resizingData.origHeight - diff; y = resizingData.origY + diff; } 
-    }
-    
-    if (el.lockRatio) h = w / resizingData.ratio; 
-    el.width = Math.round(w); el.height = Math.round(h); el.x = Math.round(x); el.y = Math.round(y); 
-    if (el.type === 'text') el.size = Math.max(10, Math.round(resizingData.origSize * (el.width / resizingData.origWidth))); 
-    renderCanvas(); 
-}
-
-function stopResize() { 
-    if (resizingData) { 
-        resizingData = null; window.onpointermove = null; window.onpointerup = null; saveToHistory(); 
-    } 
-}
-
-function toggleLockRatio(val) { 
-    const el = currentProject.elements.find(function(i) { return i.id === selectedElementId; }); 
-    if (el) { el.lockRatio = val; saveToHistory(); }
-}
-
-let rotatingData = null;
-
-function startRotate(e, id) { 
-    e.stopPropagation(); 
-    const el = currentProject.elements.find(function(i) { return i.id === id; }); 
-    if (!el || el.locked) return; 
-    const domEl = document.getElementById(id);
-    const rect = domEl.getBoundingClientRect(); 
-    rotatingData = { id: id, centerX: rect.left + rect.width / 2, centerY: rect.top + rect.height / 2 }; 
-    window.onpointermove = onRotate; 
-    window.onpointerup = stopRotate;
-}
-
-function onRotate(e) { 
-    if (!rotatingData) return; 
-    const el = currentProject.elements.find(function(i) { return i.id === rotatingData.id; }); 
-    let deg = Math.round(Math.atan2(e.clientY - rotatingData.centerY, e.clientX - rotatingData.centerX) * (180/Math.PI) + 90); 
-    if (deg < 0) deg += 360; 
-    const presets = [0, 30, 45, 90, 180, 360]; 
-    for (let i=0; i < presets.length; i++) {
-        if (Math.abs(deg - presets[i]) < 15) { deg = presets[i] === 360 ? 0 : presets[i]; break; } 
-    } 
-    el.rotation = deg; renderCanvas(); 
-}
-
-function stopRotate() { 
-    if (rotatingData) { rotatingData = null; window.onpointermove = null; window.onpointerup = null; saveToHistory(); } 
-}
-
-function changeLayer(d) { 
-    let t = multiSelectedIds.length > 0 ? multiSelectedIds : [selectedElementId]; 
-    t.forEach(function(id) { 
-        let el = currentProject.elements.find(function(i) { return i.id === id; }); 
-        if (el) el.zIndex = Math.max(1, (el.zIndex || 1) + d); 
-    });
-    saveToHistory(); renderCanvas(); 
-}
-
-function toggleLockSelected() { 
-    const el = currentProject.elements.find(function(i) { return i.id === selectedElementId; }); 
-    if (el) { el.locked = !el.locked; saveToHistory(); renderCanvas(); } 
-}
-
-function toggleHideSelected() { 
-    const el = currentProject.elements.find(function(i) { return i.id === selectedElementId; }); 
-    if (el) { el.visible = el.visible === false ? true : false; saveToHistory(); renderCanvas(); } 
-}
-
-function groupSelected() { 
-    if (multiSelectedIds.length < 2) { alert("Pilih >1 objek!"); return; } 
-    const gId = 'g_' + Math.random().toString(36).substring(2, 7);
-    multiSelectedIds.forEach(function(id) { 
-        let el = currentProject.elements.find(function(i) { return i.id === id; });
-        if (el) el.groupId = gId; 
-    }); 
-    saveToHistory(); alert("Di-group!"); 
-}
-
-function duplicateSelected() { 
-    let t = multiSelectedIds.length > 0 ? multiSelectedIds : [selectedElementId];
-    let maxZ = 1; 
-    currentProject.elements.forEach(function(e) { if (e.zIndex > maxZ) maxZ = e.zIndex; }); 
-    t.forEach(function(id) { 
-        let el = currentProject.elements.find(function(i) { return i.id === id; });
-        if(el) { 
-            let n = JSON.parse(JSON.stringify(el)); 
-            n.id = 'el_' + Math.random().toString(36).substring(2,7); 
-            n.x += 20; n.y += 20;
-            n.zIndex = ++maxZ; 
-            currentProject.elements.push(n); 
-        } 
-    });
-    saveToHistory(); renderCanvas(); 
-}
-
-function deleteSelected() { 
-    let t = multiSelectedIds.length > 0 ? multiSelectedIds : [selectedElementId]; 
-    currentProject.elements = currentProject.elements.filter(function(i) { return !t.includes(i.id); }); 
-    selectedElementId = null; multiSelectedIds = []; saveToHistory(); renderCanvas(); closeSheets(); 
-}
-
-function updateFloatingActionBar() { 
-    const fab = document.getElementById('floatingActionBar'); 
-    if (!selectedElementId) { fab.style.display = 'none'; return; } 
-    const elData = currentProject.elements.find(function(i) { return i.id === selectedElementId; }); 
-    const domEl = document.getElementById(selectedElementId); 
-    if (domEl && elData) {
-        const scale = getScaleOffset(); 
-        fab.style.display = 'flex';
-        fab.style.top = (elData.y * scale - 45) + 'px'; 
-        fab.style.left = (elData.x * scale + (domEl.offsetWidth * scale / 2)) + 'px';
-        document.getElementById('btnFabLock').innerText = elData.locked ? '🔓' : '🔒'; 
-        document.getElementById('btnFabHide').innerText = elData.visible === false ? '👁️' : '🕶️'; 
-    } 
-}
-
-function openSheet(sheetId) { 
-    closeSheets();
-    document.getElementById(sheetId).classList.add('active'); 
-}
-
-function closeSheets() {
-    document.querySelectorAll('.bottom-sheet').forEach(function(el) { el.classList.remove('active'); }); 
-}
-
-function openPropertySheet() {
-    if (!selectedElementId) return; 
-    const el = currentProject.elements.find(function(i) { return i.id === selectedElementId; });
-    const rowText = document.getElementById('propTextContainer'); 
-    const rowLink = document.getElementById('propLinkContainer'); 
-    const rowImg = document.getElementById('propImgContainer'); 
-    const rowFilter = document.getElementById('propFilterContainer'); 
-    const rowFont = document.getElementById('propFontContainer'); 
-    const rowColor = document.getElementById('propColorContainer'); 
-    const rowSize = document.getElementById('propSizeContainer');
-    
-    document.getElementById('propOpacity').value = el.opacity !== undefined ? el.opacity : 1;
-    document.getElementById('propRotation').value = el.rotation || 0;
-    document.getElementById('propAnimation').value = el.animation || 'none'; 
-    document.getElementById('propWidth').value = el.width || 100;
-    document.getElementById('propHeight').value = el.height || 40;
-    document.getElementById('propLockRatio').checked = el.lockRatio || false;
-    
-    rowText.style.display = 'none'; rowLink.style.display = 'none'; rowImg.style.display = 'none'; 
-    rowFilter.style.display = 'none'; rowFont.style.display = 'none'; rowColor.style.display = 'none'; 
-    rowSize.style.display = 'none';
-    
-    if (el.type === 'text') { 
-        rowText.style.display='block'; rowFont.style.display='block'; rowColor.style.display='block'; rowSize.style.display='block';
-        document.getElementById('propText').value = el.content;
-        document.getElementById('propFont').value = el.fontFamily || 'sans-serif';
-        document.getElementById('propColor').value = el.color || '#1e293b';
-        document.getElementById('propSize').value = el.size; 
-    } else if (el.type === 'shape') {
-        rowColor.style.display='block'; rowSize.style.display='block';
-        document.getElementById('propColor').value = el.color || 'var(--primary)'; 
-        document.getElementById('propSize').value = el.size; 
-    } else if (el.type === 'image') {
-        rowImg.style.display='block'; rowFilter.style.display='block'; rowSize.style.display='block';
-        document.getElementById('propImage').value = el.url || '';
-        document.getElementById('propFilter').value = el.filter || 'none';
-        document.getElementById('propSize').value = el.size; 
-    } else if (el.type === 'video') {
-        rowImg.style.display='block'; rowSize.style.display='block';
-        document.getElementById('propImage').value = el.url || '';
-        document.getElementById('propSize').value = el.size; 
-    } else if (el.type === 'button') {
-        rowText.style.display='block'; rowLink.style.display='block'; rowColor.style.display='block';
-        document.getElementById('propText').value = el.content;
-        document.getElementById('propLink').value = el.url || 'https://maps.google.com';
-        document.getElementById('propColor').value = el.color || 'var(--primary)'; 
-    } else if (el.type === 'countdown') {
-        rowColor.style.display='block';
-        document.getElementById('propColor').value = el.color || '#475569'; 
-    } else if (el.type === 'map') {
-        rowText.style.display='block'; rowLink.style.display='block';
-        document.getElementById('propText').value = el.content || 'Gedung Acara'; 
-        document.getElementById('propLink').value = el.url || 'https://maps.google.com'; 
-    } else if (el.type === 'qr') {
-        rowLink.style.display='block';
-        document.getElementById('propLink').value = el.url || 'https://example.com'; 
-    } else if (el.type === 'gift') {
-        rowText.style.display='block';
-        document.getElementById('propText').value = el.content || 'BCA 123456789 a.n Pengantin'; 
-    } else if (el.type === 'gallery') {
-        rowLink.style.display='block';
-        document.getElementById('propLink').value = el.url || 'https://cdn-icons-png.flaticon.com/512/833/833472.png,https://cdn-icons-png.flaticon.com/512/2924/2924082.png'; 
-    }
-    openSheet('sheet-property');
-}
-
-function updateSelectedObjectProp(prop, val) { 
-    const el = currentProject.elements.find(function(i) { return i.id === selectedElementId; }); 
-    if (el) { el[prop] = val; renderCanvas(); saveToHistory(); } 
-}
-
-function addObject(type) {
-    let maxZ = 1; currentProject.elements.forEach(function(e) { if (e.zIndex > maxZ) maxZ = e.zIndex; }); 
-    const newId = 'el_' + Math.random().toString(36).substring(2, 7);
-    let newObj = { 
-        id: newId, type: type, x: (CANVAS_W/2)-80, y: 200, 
-        width: type === 'gallery' ? 260 : (type === 'map' ? 240 : (type === 'gift' ? 220 : (type === 'shape' ? 140 : (type === 'text' ? 160 : 100)))), 
-        height: type === 'gallery' ? 180 : (type === 'map' ? 140 : (type === 'gift' ? 120 : (type === 'shape' ? 70 : (type === 'text' ? 40 : 100)))),
-        zIndex: maxZ + 1, rotation: 0, opacity: 1, visible: true, locked: false, lockRatio: false, filter: 'none', animation: 'none' 
-    };
-    
-    if (type === 'text') { newObj.content = 'Teks Baru'; newObj.size = 24; newObj.color = '#1e293b'; newObj.fontFamily = 'sans-serif'; }
-    else if (type === 'shape') { newObj.size = 24; newObj.color = 'var(--primary)'; }
-    else if (type === 'image') { let imgUrl = prompt("URL Gambar:", "https://cdn-icons-png.flaticon.com/512/833/833472.png"); if (!imgUrl) return; newObj.url = imgUrl; newObj.size = 100; }
-    else if (type === 'video') { let vidUrl = prompt("URL MP4:", "https://www.w3schools.com/html/mov_bbb.mp4"); if (!vidUrl) return; newObj.url = vidUrl; newObj.size = 100; }
-    else if (type === 'button') { newObj.content = 'Buka Peta'; newObj.color = 'var(--primary)'; newObj.url = 'https://maps.google.com'; }
-    else if (type === 'countdown') { newObj.color = '#475569'; } 
-    else if (type === 'map') { newObj.content = 'Lokasi Acara'; newObj.url = 'https://maps.google.com'; }
-    else if (type === 'qr') { newObj.url = 'https://example.com'; } 
-    else if (type === 'gift') { newObj.content = 'BCA 123456789 a.n Nama'; } 
-    else if (type === 'gallery') { newObj.url = 'https://cdn-icons-png.flaticon.com/512/833/833472.png,https://cdn-icons-png.flaticon.com/512/2924/2924082.png,https://cdn-icons-png.flaticon.com/512/711/711293.png,https://cdn-icons-png.flaticon.com/512/3238/3238012.png'; }
-    
-    currentProject.elements.push(newObj); selectedElementId = newId; saveToHistory(); renderCanvas();
-}
-
-function insertAsset(url, type) { 
-    let maxZ = 1; currentProject.elements.forEach(function(e) { if (e.zIndex > maxZ) maxZ = e.zIndex; }); 
-    const newId = 'el_' + Math.random().toString(36).substring(2, 7); 
-    let newObj = { id: newId, type: type, x: (CANVAS_W/2)-40, y: 200, width: 80, height: 80, zIndex: maxZ + 1, rotation: 0, opacity: 1, visible: true, locked: false, lockRatio: true, filter: 'none', animation: 'eff-fadeIn', url: url, size: 80}; 
-    currentProject.elements.push(newObj); selectedElementId = newId; saveToHistory(); renderCanvas(); closeSheets(); 
-}
-
-function loadTemplatesCatalog() {
-    const c = document.getElementById('templatesCatalogContainer'); c.innerHTML = "Memuat template...";
-    try {
-        google.script.run.withSuccessHandler(function (res) {
-            if (res && res.success) {
-                let html = '';
-                if (res.templates.length === 0) { 
-                    html = '<div class="card-menu" onclick="openEditorWithTemplate({templateID:\'DEF\', name: \'Kanvas Kosong\', configJSON:JSON.stringify({invitation: {groomName: \'Pria\', brideName:\'Wanita\', bgColor:\'#ffffff\'}, elements: []})})"><span class="icon">📄</span><span class="title">Kanvas Kosong</span></div>';
-                } else { 
-                    res.templates.forEach(function(t) {
-                        html += '<div class="card-menu" onclick=\'openEditorWithTemplate(' + JSON.stringify(t) + ')\'><span class="icon">✨</span><span class="title">' + t.name + '</span></div>'; 
-                    }); 
-                }
-                c.innerHTML = html;
-            } else { 
-                c.innerHTML = '<button class="btn-outline" onclick="openEditorWithTemplate({templateID: \'DEF\', name: \'Kanvas Kosong\', configJSON:JSON.stringify({invitation: {groomName: \'Pria\', brideName:\'Wanita\', bgColor:\'#ffffff\'}, elements: []})})">Buka Editor Kosong</button>'; 
-            }
-        }).withFailureHandler(function(err) { c.innerHTML = "Gagal memuat: " + err.message; }).getTemplatesCatalog();
-    } catch(e) { c.innerHTML = "Error: " + e.message; }
-}
-
-function loadUserProjects() {
-    const c = document.getElementById('projectListContainer'); c.innerHTML = "Memuat project...";
-    try {
-        google.script.run.withSuccessHandler(function(res) {
-            if (res && res.success && res.projects.length > 0) {
-                c.innerHTML = '';
-                res.projects.forEach(function(p) { 
-                    let parsed = JSON.parse(p.dataJSON); 
-                    let title = parsed.invitation.groomName ? (parsed.invitation.groomName + " & " + parsed.invitation.brideName) : p.projectID; 
-                    c.innerHTML += '<div style="display: flex; justify-content: space-between; padding:10px; border-bottom:1px solid #cbd5e1;"><span><strong>' + title + '</strong> (' + p.status + ')</span><button onclick=\'openExistingProject("' + encodeURIComponent(p.dataJSON) + '")\'>Edit</button></div>'; 
-                });
-            } else { c.innerHTML = "<p>Belum ada project.</p>"; }
-        }).getUserProjects(currentUserId);
-    } catch(e) {}
-}
-
-function openExistingProject(jsonStr) { 
-    try { 
-        currentProject = JSON.parse(decodeURIComponent(jsonStr)); migrateData(currentProject); startEditor(); 
-    } catch(e) { alert("Format data rusak."); } 
-}
-
-function loadAdminData() {
-    const tbody = document.getElementById('adminRsvpTableBody'); 
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Mengambil data...</td></tr>';
-    try { 
-        google.script.run.withSuccessHandler(function(res) {
-            if (res && res.success) { 
-                if (res.recentRSVPs.length === 0) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada tamu.</td></tr>'; 
-                else {
-                    tbody.innerHTML = ''; 
-                    res.recentRSVPs.forEach(function(r) {
-                        tbody.innerHTML += '<tr><td>' + r.projectID + '</td><td><strong>' + r.name + '</strong></td><td>' + r.attendance + '</td><td>' + r.guestCount + '</td><td>' + r.message + '</td></tr>'; 
-                    }); 
-                } 
-            }
-        }).getAdminDashboardData(); 
-    } catch(e) {}
-}
-
-function saveCurrentProject() { 
-    if(!currentProject.projectID) { currentProject.projectID = 'PROJ_' + Math.random().toString(36).substring(2, 8).toUpperCase(); } 
-    const btn = document.querySelector('button[onclick="saveCurrentProject()"]');
-    btn.innerText = "Saving..."; btn.disabled=true;
-    try {
-        google.script.run.withSuccessHandler(function(res) { 
-            btn.innerText = "Save"; btn.disabled=false; 
-            if (res && res.success) { alert("Tersimpan!"); localStorage.removeItem('DE_LOCAL_DRAFT'); }
-        }).saveProjectData({ projectID: currentProject.projectID, userId: currentUserId, dataJSON: JSON.stringify(currentProject) }); 
-    } catch(e) {
-        btn.innerText = "Save"; btn.disabled = false;
-        alert("Penyimpanan offline berhasil.");
-    }
-}
-
-function publishCurrentProject() {
-    if(!currentProject.projectID) { currentProject.projectID = 'PROJ_' + Math.random().toString(36).substring(2, 8).toUpperCase(); }
-    if(confirm("Publish project ini?")) {
+    async function sendPostRequest(payload) {
+        showLoader();
         try {
-            google.script.run.withSuccessHandler(function(res) { 
-                if (res && res.success) { localStorage.removeItem('DE_LOCAL_DRAFT'); prompt("BERHASIL! Salin Link:", res.publicURL); window.open(res.publicURL, '_blank'); } 
-            }).publishProject({ projectID: currentProject.projectID, userId: currentUserId, dataJSON: JSON.stringify(currentProject) }); 
-        } catch(e) { alert("Fitur publish memerlukan server online."); }
-    }
-}
-
-function exportToPNG() { 
-    const canvasEl = document.getElementById('mainCanvas'); 
-    selectedElementId = null; multiSelectedIds = []; canvasEl.style.transform = "scale(1)"; renderCanvas(); closeSheets();
-    document.getElementById('guideV').style.display = 'none'; document.getElementById('guideH').style.display = 'none';
-    setTimeout(function() { 
-        html2canvas(canvasEl, { scale: 2, useCORS: true }).then(function(canvas) { 
-            const link = document.createElement('a'); 
-            link.download = 'Undangan_' + (currentProject.projectID || 'Baru') + '.png'; 
-            link.href = canvas.toDataURL(); link.click(); resizeCanvasView(); 
-        }); 
-    }, 800); 
-}
-
-let cdInterval;
-
-function setDevicePreview(d) {
-    document.querySelectorAll('.preview-header button:not(.close-btn)').forEach(function(b) { b.classList.remove('active'); }); 
-    const card = document.getElementById('publicCardContent'); 
-    if (d === 'mobile') { card.style.maxWidth = '480px'; document.getElementById('btnPrevMobile').classList.add('active'); }
-    if (d === 'tablet') { card.style.maxWidth = '768px'; document.getElementById('btnPrevTablet').classList.add('active'); }
-    if (d === 'desktop') { card.style.maxWidth = '1024px'; document.getElementById('btnPrevDesktop').classList.add('active'); } 
-}
-
-function showPreview() { 
-    selectedElementId = null; renderCanvas(); closeSheets();
-    document.getElementById('publicViewerOverlay').style.display = 'flex';
-    document.getElementById('previewDeviceHeader').style.display = 'flex';
-    setDevicePreview('mobile'); renderPublicContent(); 
-}
-
-function closePreview() {
-    document.getElementById('publicViewerOverlay').style.display = 'none';
-    document.getElementById('publicAudioPlayer').pause();
-    document.getElementById('publicMusicBtn').style.display='none';
-    if (cdInterval) clearInterval(cdInterval); 
-}
-
-function loadPublicInvitation(projectId) {
-    document.getElementById('mainAppContainer').style.display = 'none';
-    document.getElementById('publicViewerOverlay').style.display = 'flex';
-    document.getElementById('previewDeviceHeader').style.display = 'none';
-    try {
-        google.script.run.withSuccessHandler(function(res) { 
-            if (res && res.success) { currentProject = JSON.parse(res.dataJSON); migrateData(currentProject); renderPublicContent(); }
-        }).getPublishedProjectData(projectId); 
-    } catch(e) {}
-}
-
-function renderPublicContent() {
-    const inv = currentProject.invitation || {}; 
-    const card = document.getElementById('publicCardContent'); if(!card) return;
-    let bgStyle = '';
-    
-    if (inv.bgGradient && inv.bgGradient.trim() !== '') bgStyle = "background: " + inv.bgGradient + "; background-size: cover;"; 
-    else if (inv.bgImage && inv.bgImage.trim() !== '') bgStyle = "background-color: " + (inv.bgColor || '#ffffff') + "; background-image: url('" + inv.bgImage + "'); background-size: cover; background-position: center;"; 
-    else bgStyle = "background-color: " + (inv.bgColor || '#ffffff') + ";";
-    
-    const audioPlayer = document.getElementById('publicAudioPlayer'); 
-    const musicBtn = document.getElementById('publicMusicBtn');
-    
-    if(inv.musicUrl && inv.musicUrl.trim() !== '') {
-        audioPlayer.src = inv.musicUrl; musicBtn.style.display = 'flex'; musicBtn.classList.add('paused'); 
-    } else { musicBtn.style.display = 'none'; audioPlayer.src = ''; }
-    
-    let dynamicHTML = ''; let hasCountdown = false;
-    let sortedElements = [...currentProject.elements].sort(function(a,b) { return (a.zIndex || 1) - (b.zIndex || 1); });
-    
-    sortedElements.forEach(function(el) {
-        if (el.visible === false) return;
-        let animClass = (el.animation && el.animation !== 'none') ? el.animation : '';
-        let style = "position:absolute; left:" + el.x + "px; top:" + el.y + "px; width:" + el.width + "px; height:" + el.height + "px; z-index:" + (el.zIndex || 1) + "; transform: rotate(" + (el.rotation||0) + "deg); opacity:" + (el.opacity !== undefined ? el.opacity : 1) + ";";
-        
-        if (el.type === 'text') { 
-            style += "font-size:" + el.size + "px; color:" + el.color + "; font-family:" + (el.fontFamily || 'sans-serif') + "; font-weight: bold; white-space: nowrap; pointer-events: none;"; 
-            dynamicHTML += '<div style="' + style + '" class="' + animClass + '">' + el.content + '</div>'; 
-        } else if (el.type === 'shape') { 
-            style += "background-color:" + el.color + "; border-radius: 8px; pointer-events:none;"; 
-            dynamicHTML += '<div style="' + style + '" class="' + animClass + '"></div>'; 
-        } else if (el.type === 'image') { 
-            let fs = (el.filter && el.filter !== 'none') ? "filter: " + el.filter + ";" : ''; 
-            style += "pointer-events: none;"; 
-            dynamicHTML += '<div style="' + style + '" class="' + animClass + '"><img src="' + el.url + '" style="width:100%; height: 100%; object-fit:contain; ' + fs + '" loading="lazy"/></div>';
-        } else if (el.type === 'video') { 
-            style += "pointer-events:none;"; 
-            dynamicHTML += '<div style="' + style + '" class="' + animClass + '"><video src="' + el.url + '" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; border-radius: 8px;"></video></div>';
-        } else if (el.type === 'button') { 
-            dynamicHTML += '<a href="' + el.url + '" target="_blank" style="' + style + ' text-decoration: none; display:block;" class="' + animClass + '"><div style="width: 100%; height: 100%; display: flex; align-items:center; justify-content: center; background-color:' + el.color + '; color: white; border-radius: 20px; font-weight:bold; box-shadow:0 4px 6px rgba(0,0,0,0.15); white-space: nowrap; text-align:center;">' + el.content + '</div></a>'; 
-        } else if (el.type === 'countdown') { 
-            hasCountdown = true; 
-            dynamicHTML += '<div style="' + style + '" class="' + animClass + '" id="cdTimerView_' + el.id + '">' + getCountdownHTML(el.color) + '</div>'; 
-        } else if (el.type === 'map') { 
-            dynamicHTML += '<a href="' + (el.url || 'https://maps.google.com') + '" target="_blank" style="' + style + ' text-decoration:none; display:block;" class="' + animClass + '"><div style="width:100%; height:100%; background: #e2e8f0; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid var(--border); text-align:center; padding: 8px;"><span style="font-size:1.5rem;">📍</span><strong style="font-size:0.75rem; margin-top:4px; color: #1e293b;">Buka Google Map</strong><span style="font-size:0.6rem; color:#64748b;">' + (el.content || 'Gedung Acara') + '</span></div></a>'; 
-        } else if (el.type === 'qr') { 
-            let qrImgUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(el.url || 'https://example.com'); 
-            dynamicHTML += '<div style="' + style + '" class="' + animClass + '"><div style="width: 100%; height: 100%; background: white; border-radius:8px; display: flex; flex-direction: column; align-items:center; justify-content: center; border:1px solid var(--border); padding: 4px;"><img src="' + qrImgUrl + '" style="width:80%; height:80%; object-fit:contain;"/><span style="font-size:0.55rem; font-weight:bold;">Scan QR</span></div></div>'; 
-        } else if (el.type === 'gift') { 
-            dynamicHTML += '<div style="' + style + '" class="' + animClass + '"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, #f8fafc, #e2e8f0); border-radius: 8px; border:2px dashed var(--primary); display: flex; flex-direction:column; align-items: center; justify-content: center; text-align:center; padding: 8px;"><span style="font-size:1.5rem;">🎁</span><strong style="font-size:0.75rem; color:var(--primary);">Digital Gift</strong><span style="font-size:0.6rem; color: #334155; margin-top:2px;">' + (el.content || 'Info Rekening') + '</span></div></div>'; 
-        } else if (el.type === 'gallery') { 
-            let urls = (el.url || "").split(','); 
-            let gridHTML = urls.map(function(u) { return '<div style="background:#f1f5f9; border-radius: 4px; overflow:hidden; height:100%;"><img src="' + u.trim() + '" style="width:100%; height: 100%; object-fit: cover;" loading="lazy"/></div>'; }).join('');
-            dynamicHTML += '<div style="' + style + '" class="' + animClass + '"><div style="width: 100%; height: 100%; background:#ffffff; border-radius: 8px; padding: 4px; display:grid; grid-template-columns: repeat(2, 1fr); gap: 4px; border: 1px solid var(--border);">' + gridHTML + '</div></div>';
-        }
-    });
-    
-    card.style.cssText = bgStyle;
-    card.innerHTML = '<div style="position:relative; width:100%; max-width:360px; height: 640px; overflow:hidden; margin:0 auto;">' + dynamicHTML + '<div class="eff-fadeIn" style="padding-top: 50px; position:relative; z-index:0; text-align:center; pointer-events: none;"><p style="font-size:0.75rem; color: #475569; letter-spacing: 2px;">The Wedding of</p><h2 style="font-size:2rem; color:var(--primary); margin: 10px 0; font-family: serif;">' + (inv.groomName ||'') + ' & ' + (inv.brideName || '') + '</h2><p style="font-size:0.9rem; font-weight: bold;">' + (inv.eventDate ? new Date(inv.eventDate).toLocaleDateString('id-ID') : '') + '</p></div></div><div style="background:#ffffff; z-index: 1000; position:relative; padding: 20px; padding-bottom:50px; margin-top: 20px; text-align:center;"><h4 style="margin-bottom:12px;">Konfirmasi Kehadiran (RSVP)</h4><div class="input-group"><input type="text" id="rsvpNamePublic" placeholder="Nama Anda" required> </div><div class="input-group"><select id="rsvpAttPublic"><option value="Hadir">Hadir</option><option value="Tidak Hadir">Berhalangan</option></select></div><div class="input-group"><textarea id="rsvpMsgPublic" rows="2" placeholder="Pesan / Doa"></textarea></div><button id="btnSubmitRSVP" onclick="submitRSVPForm()" style="width:100%; padding: 10px;">Kirim RSVP</button></div>';
-    
-    if (hasCountdown && inv.eventDate) {
-        const targetDate = new Date(inv.eventDate).getTime();
-        if (cdInterval) clearInterval(cdInterval);
-        cdInterval = setInterval(function() {
-            const now = new Date().getTime(); 
-            const distance = targetDate - now;
-            const cdElements = document.querySelectorAll('.countdown-widget');
-            
-            if (cdElements.length === 0) { clearInterval(cdInterval); return; }
-            if (distance < 0) {
-                cdElements.forEach(function(el) { el.innerHTML = "<div style='background:rgba(255,255,255,0.9); padding:10px; border-radius: 8px;'>Acara Sedang Berlangsung!</div>"; });
-                clearInterval(cdInterval); return; 
-            }
-            const d = Math.floor(distance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0'); 
-            const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0'); 
-            const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0'); 
-            const s = Math.floor((distance % (1000 * 60)) / 1000).toString().padStart(2, '0');
-            
-            cdElements.forEach(function(el) { 
-                const spans = el.querySelectorAll('.cd-num'); 
-                if (spans.length === 4) { spans[0].innerText = d; spans[1].innerText = h; spans[2].innerText = m; spans[3].innerText = s; } 
+            const response = await fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ data: JSON.stringify(payload) })
             });
-        }, 1000);
+            const result = await response.json();
+            if(result.status === "success") await loadData();
+            else alert("Gagal: " + result.message);
+        } catch (e) { alert("Terjadi kesalahan jaringan."); }
+        hideLoader();
     }
-}
 
-function togglePublicMusic() { 
-    const player = document.getElementById('publicAudioPlayer'); 
-    const btn = document.getElementById('publicMusicBtn'); 
-    if (player.paused) { 
-        let playPromise = player.play(); 
-        if (playPromise !== undefined) {
-            playPromise.then(function() { btn.classList.remove('paused'); }).catch(function(error) { alert("Pastikan volume perangkat menyala."); }); 
-        } 
-    } else { player.pause(); btn.classList.add('paused'); } 
-}
+    function renderDashboard() {
+        document.getElementById('dash-macam').innerText = appData.dashboard.macam_barang;
+        document.getElementById('dash-stok').innerText = appData.dashboard.total_stok;
+        document.getElementById('dash-pinjam').innerText = appData.dashboard.total_dipinjam;
 
-function submitRSVPForm() {
-    const name = document.getElementById('rsvpNamePublic').value; 
-    const att = document.getElementById('rsvpAttPublic').value; 
-    const msg = document.getElementById('rsvpMsgPublic').value;
-    
-    if(!name || name.trim() === '') { alert("Mohon isi nama Anda!"); return; }
-    
-    const btn = document.getElementById('btnSubmitRSVP');
-    btn.innerText = "Mengirim..."; btn.disabled = true;
-    try {
-        google.script.run.withSuccessHandler(function(res) {
-            if (res && res.success) { 
-                btn.innerText = "✓ Berhasil Terkirim"; btn.style.backgroundColor = "#10b981";
-                document.getElementById('rsvpNamePublic').value = '';
-                document.getElementById('rsvpMsgPublic').value = ''; 
-            } else { alert("Gagal mengirim RSVP."); btn.innerText = "Kirim RSVP"; btn.disabled = false; }
-        }).withFailureHandler(function(err) { 
-            alert("Koneksi terputus: " + err.message); btn.innerText = "Kirim RSVP"; btn.disabled = false; 
-        }).submitGuestRSVP({ projectID: currentProject.projectID || 'TEST_01', name: name, attendance: att, message: msg });
-    } catch(e) {
-        alert("Simulasi: RSVP " + name + " berhasil (Mode Offline).");
-        btn.innerText = "✓ Berhasil Terkirim"; btn.style.backgroundColor = "#10b981";
+        // Render List SEDANG DIPINJAM
+        const listPinjam = document.getElementById('dash-pinjam-list'); listPinjam.innerHTML = "";
+        const dataPinjam = appData.transaksi.filter(t => t.status === 'Dipinjam');
+        if(dataPinjam.length === 0) listPinjam.innerHTML = `<small class="text-muted">Tidak ada warga meminjam barang.</small>`;
+        else dataPinjam.forEach(t => {
+            listPinjam.innerHTML += `<div class="list-warga-item border-left-warning"><div><strong class="text-dark fs-5">${t.warga}</strong><br><small class="text-muted">Pinjam: <b>${t.barang}</b> (Qty: ${t.jumlah})</small></div><button class="btn btn-sm btn-primary fw-bold shadow-sm" onclick="kembalikanBarang('${t.id}')"><i class="fas fa-check"></i> Kembali</button></div>`;
+        });
+
+        // Render List TELAH DIKEMBALIKAN
+        const listKembali = document.getElementById('dash-kembali-list'); listKembali.innerHTML = "";
+        const dataKembali = appData.transaksi.filter(t => t.status === 'Dikembalikan' || t.jenis === 'Barang kembali');
+        if(dataKembali.length === 0) listKembali.innerHTML = `<small class="text-muted">Belum ada riwayat pengembalian.</small>`;
+        else dataKembali.slice(0, 5).forEach(t => {
+            listKembali.innerHTML += `<div class="list-warga-item border-left-success"><div><strong class="text-dark fs-5">${t.warga}</strong><br><small class="text-muted">Kembali: <b>${t.barang}</b> (Qty: ${t.jumlah})</small></div><div class="text-end" style="font-size:0.75rem;"><span class="badge bg-success mb-1">Selesai</span><br><span class="text-muted">Petugas: ${t.petugas}</span></div></div>`;
+        });
     }
-}
+
+    function renderBarang() {
+        const tbody = document.getElementById('table-barang'); const selectBarang = document.getElementById('inpTransBarang');
+        tbody.innerHTML = ""; selectBarang.innerHTML = "<option value=''>-- Pilih Barang --</option>";
+        appData.inventaris.forEach(b => {
+            tbody.innerHTML += `<tr><td class="fw-bold">${b.nama}</td><td class="text-center"><span class="badge bg-success">${b.stok}</span></td><td class="text-center"><span class="badge bg-warning text-dark">${b.dipinjam}</span></td></tr>`;
+            selectBarang.innerHTML += `<option value="${b.nama}">${b.nama} (Sisa Stok: ${b.stok})</option>`;
+        });
+    }
+
+    function renderTransaksi() {
+        const tbody = document.getElementById('table-transaksi'); tbody.innerHTML = "";
+        appData.transaksi.forEach(t => {
+            let badgeColor = 'secondary';
+            if(t.jenis === 'Barang Sumbangan') badgeColor = 'success';
+            if(t.jenis === 'Barang rusak') badgeColor = 'danger';
+            if(t.jenis === 'Barang Di pinjam') badgeColor = 'warning text-dark';
+            if(t.jenis === 'Barang kembali') badgeColor = 'info text-dark';
+            
+            let statusHtml = t.status !== "-" ? `<span class="badge bg-${t.status === 'Dipinjam' ? 'warning text-dark' : 'success'}">${t.status}</span>` : "-";
+
+            tbody.innerHTML += `<tr><td><small>${t.tanggal}</small></td><td><span class="badge bg-${badgeColor}">${t.jenis}</span></td><td>${statusHtml}</td><td class="fw-bold">${t.barang}</td><td>${t.jumlah}</td><td class="fw-bold text-primary">${t.warga}</td><td>${t.petugas}</td></tr>`;
+        });
+    }
+
+    document.getElementById('formBarang').addEventListener('submit', function(e) {
+        e.preventDefault();
+        sendPostRequest({ action: 'tambah_barang', nama: document.getElementById('inpBarangNama').value, stok_awal: document.getElementById('inpBarangStok').value });
+        bootstrap.Modal.getInstance(document.getElementById('modalBarang')).hide(); this.reset();
+    });
+
+    document.getElementById('formTransaksi').addEventListener('submit', function(e) {
+        e.preventDefault();
+        sendPostRequest({
+            action: 'tambah_transaksi',
+            jenis: document.getElementById('inpTransJenis').value,
+            barang: document.getElementById('inpTransBarang').value,
+            jumlah: document.getElementById('inpTransJumlah').value,
+            warga: document.getElementById('inpTransWarga').value,
+            petugas: document.getElementById('inpTransPetugas').value
+        });
+        bootstrap.Modal.getInstance(document.getElementById('modalTransaksi')).hide(); this.reset(); 
+    });
+
+    function kembalikanBarang(idTrans) {
+        if(confirm("Konfirmasi: Apakah barang ini sudah diterima kembali secara utuh?")) {
+            sendPostRequest({ action: 'kembalikan_barang', id: idTrans });
+        }
+    }
+
+    function shareWA() {
+        if(!appData) return;
+        let text = "📦 *LAPORAN INVENTARIS GUDANG RT*\n📅 " + new Date().toLocaleDateString("id-ID") + "\n\n*DAFTAR STOK BARANG:*\n";
+        appData.inventaris.forEach(b => { text += `▪️ ${b.nama}\n    Tersedia: ${b.stok} | Dipinjam: ${b.dipinjam}\n`; });
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
 </script>
 </body>
 </html>
